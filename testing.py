@@ -12,6 +12,28 @@ from Crypto.Hash import SHA
 n_users = 10
 
 
+def hash(cab="b'cab1'", data=None):
+
+    """
+    Create a new hash object.
+
+    cab: default = b"cab1"; the different prefixes of hash functions
+                            we will use:
+                            - b"cab1" for the first hash function (F)
+                            - b"cab2" for the second hash function (G)
+                            - b"cab3" for the third hash function (H1)
+                            - b"cab4" for the fourth hash function (H2)
+                            - b"cab5" for the fifth hash function (H3)
+    data: default = None; the very first chunk of the message to hash.
+    """
+
+    h1 = SHA256.new()
+    h1.update(cab)
+    h2 = SHA256.new()
+    h2.update(data)
+    return h1.digest() + h2.digest()
+
+
 def password_generator(size=8, chars=string.ascii_letters + string.digits + string.punctuation):
                                                                             # !@#$%^&*()?
     """
@@ -41,7 +63,7 @@ print(usr_pwd)
 starting_point = time.time()
 print(starting_point)
 
-time.sleep(8)
+time.sleep(2)
 
 elapsed_time = time.time() - starting_point
 print(elapsed_time)  # seconds
@@ -49,11 +71,16 @@ print(elapsed_time)  # seconds
 elapsed_time_ms = (time.time() - starting_point)*1000
 print(elapsed_time_ms)  # milliseconds
 
-hash = SHA256.new()
+hash1 = hash(b"cab1", b"holaa")
+print(hash1)
+
+hash2 = hash(b"cab1", b"adios")
+print(hash2)
 
 
-key = ElGamal.generate(2048, Random.new().read)
-print(key)
+# randfunc = Random.get_random_bytes(32)
+# key = ElGamal.generate(2048, Random.new().read(16))
+# print(key)
 
 # from Crypto.Cipher import AES
 #
