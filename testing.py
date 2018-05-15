@@ -11,6 +11,7 @@ from Crypto.PublicKey import ElGamal
 from Crypto.Util.number import GCD
 from Crypto.Hash import SHA
 
+''' Number of users of the user group Γ '''
 n_users = 10
 
 
@@ -250,8 +251,11 @@ gi = PWGi[index]
 
 hp = pow(h, number.bytes_to_long(gi.digest()), key.p)
 
-Qi = gr*hp
+Qi = gr*hp % key.p
 print(Qi)
+
+"""" Ci sends (Γ, X, Q(i)) to S. """
+# We have all of the pieces
 
 
 
