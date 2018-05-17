@@ -2,9 +2,8 @@ import string
 import time
 import ast
 
-from Crypto.Hash import SHA512
-
 from Crypto.Util import number
+from Crypto.Hash import SHA512
 from Crypto import Random
 from Crypto.Random import random
 from Crypto.PublicKey import ElGamal
@@ -112,55 +111,62 @@ def password_generator(size=8, chars=string.ascii_letters + string.digits + stri
 
 
 def xor(data1, data2):
+    """
+    Does a "bitwise exclusive or".
+    Each bit of the output is the same as the corresponding bit in data1 if that bit in data2 is 0,
+    and it's the complement of the bit in data1 if that bit in data2 is 1.
+
+    data1: the first bit string of the operation
+    data2: the second bit string of the operation
+    """
     return bytearray(a ^ b for a, b in zip(*map(bytearray, [data1, data2])))
 
 
 """ setUp() """
 
-''' Number of users of the user group Γ '''
-numUsers = 10  # Number of users (i.e., of passwords in the password database at the sender)
-''' Number of users of the user group Γ '''
+numUsers = 10  # Number of users of the user group Γ (i.e., of passwords in the password database at the sender)
 pwdBitlen = 8  # Number of bits of a password
 
-""" Let Γ be a user-group (or simply group) of n users {C1, . . . , Cn}.
+id_server = "server1"  # Server's identification string
+
+''' Let Γ be a user-group (or simply group) of n users {C1,...,Cn}.
 Each user Ci in Γ is initially provided a distinct low entropy password pwi,
-while S holds a list of these passwords. """
+while S holds a list of these passwords. '''
+
 pwdList = []
 for i in range(numUsers):
     pwd = random.randint(0, 2 ** pwdBitlen - 1)
     pwdList.append(pwd)
 
-# print(pwdList)
+print("pwdList:", pwdList)
 
-# User's password should be in Server's list
-index = random.choice(range(0, numUsers))
+index = random.choice(range(numUsers))  # User's password should be in Server's list
+pwdUser = pwdList[index]
+
 print("index (from 1 to numUsers):", index+1)
-usr_pwd = pwdList[index]
-# print(usr_pwd)
-
-# Server's identification string
-id_server = "server1"
+print("pwdUser:", pwdUser)
 
 
-# PWFi and PWGi
+''' We set PWFi = F(pwi) and PWGi = G(i,pwi). '''
 PWFi = []
 PWGi = []
 i = 1
 for k in pwdList:
-    # PWFi = F(pwi)
-    PWFi.append(f(str(k).encode('utf-8')))  # str in k
-    # PWGi = G(i, pwi)
-    PWGi.append(g(str(i).encode('utf-8'), str(k).encode('utf-8')))  # str in k
+    PWFi.append(f(str(k).encode('utf-8')))  # PWFi = F(pwi)                                     # str in k
+    PWGi.append(g(str(i).encode('utf-8'), str(k).encode('utf-8')))  # PWGi = G(i, pwi)          # str in k
     i = i + 1
 
-''' print("PWGi:")
+''' print("PWFi:")
+for elem in PWFi:
+    print(len(elem.digest())*8) '''
+
+print("\nPWGi:")
 for elem in PWGi:
-    print(elem.hexdigest()) '''
+    print(elem.hexdigest())
 
 
 """ To measure times """
 starting_point = time.time()
-# print(starting_point)
 
 
 #: Dictionary of ElGamal parameters.
@@ -177,51 +183,35 @@ starting_point = time.time()
 
 key = ElGamal.generate(512, Random.new().read)
 
-# Tests
-print("Modulus:", key.p)
-print("Order of the group:", key.p - 1)
+# Tests ElGamal:
+print("\nModulus:", key.p)
+print("Order of the group:", key.p - 1, "\n")
 
 print("Generator:", key.g)
+print("size of the generator g in bits:", number.size(key.g), "\n")
 
 print("Public key:", key.y)
-print("Size:", key.y.bit_length())
+print("size of the public key in bits:", number.size(key.y), "\n")
 
 print("Private key:", key.x)
-print("Size:", key.x.bit_length())
+print("size of the private key in bits:", number.size(key.x), "\n")
 
-elapsed_time = time.time() - starting_point
-print(elapsed_time, "s")  # seconds
 
-elapsed_time_ms = (time.time() - starting_point) * 1000
-print(elapsed_time_ms, "ms")  # milliseconds
-
-""" Phase 1 """
-''' Ci chooses randomly and uniformly x,r ∈ Zp and computes X = g^x. '''
-# The attribute y in key --the public key-- is X = g^x
-X = key.y
-# We use ElGamal's implementation so we can generate r ∈ Zp
-r = number.getRandomRange(2, key.p - 1, Random.new().read)
-
-''' Next, Ci generates a query Q(i) for the i-th data in OT protocol as
-# Q(i) = g^r h^G(i,pwi) = g^r h^PWGi. '''
-gr = pow(key.g, r, key.p)
-
-# We need to create another generator, h
-# q is
-q = (key.p - 1) // 2
-
+# We need to select another generator, h
+q = (key.p - 1) // 2  # View ElGamal's implementation to find the value of q
 h = pow(key.g, number.getRandomRange(1, q, Random.new().read), key.p)
-# print(h)
+print("Generator h:", h)
+print("size of the generator h in bits:", number.size(h), "\n")
 
 
 """ Saving information in a file """
 
 f = open("apake05.txt", 'w')
 f.write("Password list:\n")
-f.write(str(pwdList) + "\n")
-f.write("generator g:\n")
-f.write(str(key.g) + "\n")
-f.write("generator h:\n")
+f.write(str(pwdList))
+f.write("\ngenerator g:\n")
+f.write(str(key.g))
+f.write("\ngenerator h:\n")
 f.write(str(h) + "\n")
 f.close()
 
@@ -236,27 +226,51 @@ with open("apake05.txt", 'r') as fp:
         if i == 1:
             password_list = ast.literal_eval(line)  # 2nd line
         elif i == 3:
-            ge = line  # 4th line
+            ge = int(line)  # 4th line
         elif i == 5:
-            hache = line  # 6th line
+            hache = int(line)  # 6th line
 
-# Testing access to the read list
+''' # Testing access to the read list
 for i in list(password_list):
     print("password_list:", i)
-print("ge:", ge)
-print("hache:", hache)
+print("\nge:", ge)
+print("hache:", hache) '''
 
 
-gi = PWGi[index]
-# print(gi.hexdigest())
+elapsed_time = time.time() - starting_point
+print(elapsed_time, "s")  # seconds
 
-hp = pow(h, number.bytes_to_long(gi.digest()), key.p)
+elapsed_time_ms = (time.time() - starting_point) * 1000
+print(elapsed_time_ms, "ms")  # milliseconds
 
-Qi = gr * hp % key.p
-print(Qi)
 
-"""" Ci sends (Γ, X, Q(i)) to S. """
-# We have all of the pieces
+""" Phase 1 """
+''' Ci chooses randomly and uniformly x,r ∈ Zp and computes X = g^x. '''
+
+X = key.y  # The public key of ElGamal key is y = g^x, so X = y
+r = number.getRandomRange(2, key.p - 1, Random.new().read)  # We generate r ∈ Zp
+
+''' Next, Ci generates a query Q(i) for the i-th data in OT protocol as
+Q(i) = g^r h^G(i,pwi) = g^r h^PWGi. '''
+
+tmp_gr = pow(key.g, r, key.p)
+tmp_gi = PWGi[index]
+# To check if it is well chosen
+print("\ntmp_gi:", tmp_gi.hexdigest())  # i-th data in PWGi
+tmp_hp = pow(h, number.bytes_to_long(tmp_gi.digest()), key.p)
+
+Qi = tmp_gr * tmp_hp % key.p
+print("\nQuery Qi:", Qi)
+print("size of Qi in bits:", number.size(Qi))
+
+''' Ci sends (Γ, X, Q(i)) to S. '''
+'''
+We have all of the pieces:
+
+    Γ -> pwdList
+    X -> X
+    Q(i) -> Qi
+'''
 
 
 """ Phase 2 """
@@ -373,4 +387,3 @@ if AuthC.hexdigest() == AuthS.hexdigest():
              str(AQi).encode('utf-8'), str(Y_c).encode('utf-8'), str(Kc).encode('utf-8'))
 else:
     print("Incorrect Authentication. Aborting protocol...")
-
