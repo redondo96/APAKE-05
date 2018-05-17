@@ -257,7 +257,8 @@ tmp_gr = pow(key.g, r, key.p)
 gi = PWGi[index]
 # To check if it is well chosen
 print("\ngi:", gi.hexdigest())  # i-th data in PWGi
-tmp_hp = pow(h, number.bytes_to_long(gi.digest()), key.p)
+tmp_hs = number.bytes_to_long(gi.digest()) % key.p
+tmp_hp = pow(h, tmp_hs, key.p)
 
 Qi = tmp_gr * tmp_hp % key.p
 print("\nQuery Qi:", Qi)
