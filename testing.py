@@ -248,16 +248,16 @@ print(elapsed_time_ms, "ms")  # milliseconds
 ''' Ci chooses randomly and uniformly x,r ∈ Zp and computes X = g^x. '''
 
 X = key.y  # The public key of ElGamal key is y = g^x, so X = y
-r = number.getRandomRange(2, key.p - 1, Random.new().read)  # We generate r ∈ Zp
+r = number.getRandomRange(2, key.p-1, Random.new().read)  # We generate r ∈ Zp
 
 ''' Next, Ci generates a query Q(i) for the i-th data in OT protocol as
 Q(i) = g^r h^G(i,pwi) = g^r h^PWGi. '''
 
 tmp_gr = pow(key.g, r, key.p)
-tmp_gi = PWGi[index]
+gi = PWGi[index]
 # To check if it is well chosen
-print("\ntmp_gi:", tmp_gi.hexdigest())  # i-th data in PWGi
-tmp_hp = pow(h, number.bytes_to_long(tmp_gi.digest()), key.p)
+print("\ngi:", gi.hexdigest())  # i-th data in PWGi
+tmp_hp = pow(h, number.bytes_to_long(gi.digest()), key.p)
 
 Qi = tmp_gr * tmp_hp % key.p
 print("\nQuery Qi:", Qi)
@@ -274,76 +274,86 @@ We have all of the pieces:
 
 
 """ Phase 2 """
-''' S chooses randomly and uniformly y, k1,...,kn ∈ Zp and computes Y = gy
-and αi,βj for 1 ≤ j ≤ n as follows:􏱅􏱆 􏱇 􏱈
-                                    αj =Y*g^F(pwj) = Y*g^PWFj, βj = H0(Q(i)(h^PWGj)^−1)^kj ,j) ⊕ αj. '''
+''' S chooses randomly and uniformly y, k1,...,kn ∈ Zp and computes Y = g^y
+and αj, βj for 1 ≤ j ≤ n as follows:􏱅􏱆 􏱇 􏱈
+                                        αj =Y*g^F(pwj) = Y*g^PWFj, βj = H0(Q(i)(h^PWGj)^−1)^kj ,j) ⊕ αj. '''
 
-# We use ElGamal's implementation so we can generate y ∈ Zp
-y = number.getRandomRange(2, key.p - 1, Random.new().read)
+y_min = number.getRandomRange(2, key.p-1, Random.new().read)  # We generate y ∈ Zp
+Y = pow(key.g, y_min, key.p)
 
-Y = pow(key.g, y, key.p)
+kn = []  # k1,...,kn ∈ Zp
+for i in range(numUsers):
+    kn.append(number.getRandomRange(2, key.p-1, Random.new().read))
 
-# k1,...,kn ∈ Zp
-kn = []
-for i in range(0, numUsers):
-    kn.append(number.getRandomRange(2, key.p - 1, Random.new().read))
-
-# print(kn)
+# print("\nk1...n:", kn)
 
 
-alfai = []
+alfai = []  # αj for 1 ≤ j ≤ n
 for pwf in PWFi:
-    tmp = pow(key.g, number.bytes_to_long(pwf.digest()), key.p)
-    mul = Y * tmp % key.p
-    alfai.append(mul)
+    tmp_hs = number.bytes_to_long(pwf.digest()) % key.p
+    tmp_exp = pow(key.g, tmp_hs, key.p)
+    tmp_mul = Y * tmp_exp % key.p
+    alfai.append(tmp_mul)
 
-print(alfai)
+print("\nαi:", alfai)
+print("With size:", len(alfai))
 
-betai = []
+betai = []  # βj for 1 ≤ j ≤ n
 for n in range(numUsers):
-    exp1 = pow(h, number.bytes_to_long(PWGi[n].digest()), key.p)
-    inv = number.inverse(exp1, key.p)
-    mul = Qi * inv % key.p
-    exp2 = pow(mul, kn[n], key.p)
-    hs = h0(str(exp2).encode('utf-8'), str(n+1).encode('utf-8'))
-    if len(hs.digest()) != len(number.long_to_bytes(alfai[n], len(hs.digest()))):
-        raise ValueError('different sizes')
+    tmp_hs = number.bytes_to_long(PWGi[n].digest()) % key.p
+    tmp_exp1 = pow(h, tmp_hs, key.p)
+    tmp_inv = number.inverse(tmp_exp1, key.p)
+    tmp_mul = Qi * tmp_inv % key.p
+    tmp_exp2 = pow(tmp_mul, kn[n], key.p)
+    tmp_hash = h0(str(tmp_exp2).encode('utf-8'), str(n+1).encode('utf-8'))
+    if len(tmp_hash.digest()) != len(number.long_to_bytes(alfai[n], len(tmp_hash.digest()))):
+        raise ValueError('Different sizes')
     else:
-        x_or = xor(hs.digest(), number.long_to_bytes(alfai[n]))
-        betai.append(x_or)
+        tmp_xor = xor(tmp_hash.digest(), number.long_to_bytes(alfai[n], len(tmp_hash.digest())))
+        betai.append(tmp_xor)
 
-print(betai)
+print("\nβi:", betai)
+print("With size:", len(betai))
 
 ''' Let A(Q(i)) = (β1,...,βn,g^k1,...,g^kn), and let KS = X^y. '''
-# We already have β1,...,βn; but we have to calculate g^k1,...,g^kn
 
-gkn = []
+gkn = []  # We already have β1,...,βn; but we have to calculate g^k1,...,g^kn
 for exp in kn:
     gk = pow(key.g, exp, key.p)
     gkn.append(gk)
 
-# print(gkn)
+print("\ngkn:", gkn)
 
-# AQi will be the concatenation of betai and gkn lists
-AQi = betai + gkn
-print("A(Q(i)):", AQi)
+AQi = betai + gkn  # AQi will be the concatenation of betai and gkn lists
+print("\nA(Q(i)):", AQi)
+print("With size:", len(AQi))
 
-# Ks
-Ks = pow(X, y, key.p)
-print(Ks)
+KS = pow(X, y_min, key.p)
+print("\nKs:", KS)
 
 ''' S computes the authenticator AuthS and the session key skS as follows
 AuthS = H2(Γ,S,X,A(Q(i)),Y,KS) and skS = H1(Γ,S,X,A(Q(i)),Y,KS). '''
 
 AuthS = h2(str(pwdList).encode('utf-8'), id_server.encode('utf-8'), str(X).encode('utf-8'),
-           str(AQi).encode('utf-8'), str(Y).encode('utf-8'), str(Ks).encode('utf-8'))
-# print(AuthS.hexdigest())
+           str(AQi).encode('utf-8'), str(Y).encode('utf-8'), str(KS).encode('utf-8'))
+
+print("\nAuthS", AuthS.hexdigest())
+# print("With size:", len(AuthS.digest())*8)
 
 skS = h1(str(pwdList).encode('utf-8'), id_server.encode('utf-8'), str(X).encode('utf-8'),
-         str(AQi).encode('utf-8'), str(Y).encode('utf-8'), str(Ks).encode('utf-8'))
+         str(AQi).encode('utf-8'), str(Y).encode('utf-8'), str(KS).encode('utf-8'))
 
-""" S sends (S,A(Q(i)),AuthS) to Ci. """
-# We have all of the pieces
+print("\nskS:", skS.hexdigest())
+# print("With size:", len(skS.digest())*8)
+
+''' S sends (S,A(Q(i)),AuthS) to Ci. '''
+'''
+We have all of the pieces:
+
+    S -> id_server
+    A(Q(i)) -> AQi
+    AuthS -> AuthS
+'''
 
 
 """ Phase 3 """
