@@ -296,7 +296,7 @@ for pwf in PWFi:
     alfai.append(tmp_mul)
 
 print("\nαi:", alfai)
-print("With size:", len(alfai))
+print("List with size:", len(alfai))
 
 betai = []  # βj for 1 ≤ j ≤ n
 for n in range(numUsers):
@@ -307,13 +307,13 @@ for n in range(numUsers):
     tmp_exp2 = pow(tmp_mul, kn[n], key.p)
     tmp_hash = h0(str(tmp_exp2).encode('utf-8'), str(n+1).encode('utf-8'))
     if len(tmp_hash.digest()) != len(number.long_to_bytes(alfai[n], len(tmp_hash.digest()))):
-        raise ValueError('Different sizes')
+        raise ValueError('XOR operands have different sizes')
     else:
         tmp_xor = xor(tmp_hash.digest(), number.long_to_bytes(alfai[n], len(tmp_hash.digest())))
         betai.append(tmp_xor)
 
 print("\nβi:", betai)
-print("With size:", len(betai))
+print("List with size:", len(betai))
 
 ''' Let A(Q(i)) = (β1,...,βn,g^k1,...,g^kn), and let KS = X^y. '''
 
@@ -326,7 +326,7 @@ print("\ngkn:", gkn)
 
 AQi = betai + gkn  # AQi will be the concatenation of betai and gkn lists
 print("\nA(Q(i)):", AQi)
-print("With size:", len(AQi))
+print("List with size:", len(AQi))
 
 KS = pow(X, y_min, key.p)
 print("\nKs:", KS)
@@ -358,42 +358,57 @@ We have all of the pieces:
 
 """ Phase 3 """
 ''' Ci extracts αi from A(Q(i)) as αi = βi ⊕ H0((g^ki)^r,i). '''
-# βi will be in the [index] position of A(Q(i)) and g^ki will be in the [numUsers+index] position
-beta = AQi[index]
-gki = int(AQi[numUsers+index])
-print("beta:", beta)
-print("gki:", gki)
 
-exp = pow(gki, r, key.p)
-hs = h0(str(exp).encode('utf-8'), str(i+1).encode('utf-8'))
-alfa = number.bytes_to_long(xor(beta, hs.digest()))
-print("alfa:", alfa)
+beta = AQi[index]  # βi will be in the [index] position of A(Q(i)) and g^ki will be in the [numUsers+index] position
+gki = int(AQi[numUsers+index])  # It is an integer
+print("\nbeta:", beta)
+print("\ngki:", gki)
 
+tmp_exp = pow(gki, r, key.p)  # r generated before
+tmp_hs = h0(str(tmp_exp).encode('utf-8'), str(index+1).encode('utf-8'))
+if len(beta) != len(tmp_hs.digest()):
+    raise ValueError('XOR operands have different sizes')
+else:
+    alfa = number.bytes_to_long(xor(beta, tmp_hs.digest())) % key.p  # αi is an integer
+
+# Check if extracted αi and server's αi match
+print("\nalfa:", alfa)
 print("alfai[index]:", alfai[index])
 
 
 ''' Ci computes Y = αi(g^PWFi )^−1, KC = Y^x. '''
-fi_c = PWFi[index]
-exp = pow(key.g, number.bytes_to_long(fi_c.digest()), key.p)
-inv = number.inverse(exp, key.p)
-Y_c = alfa * inv % key.p
 
-Kc = pow(Y_c, key.x, key.p)
-print("Kc:", Kc)
+tmp_fi = PWFi[index]
+tmp_hs = number.bytes_to_long(tmp_fi.digest()) % key.p
+tmp_exp = pow(key.g, tmp_hs, key.p)
+tmp_inv = number.inverse(tmp_exp, key.p)
+Y_c = alfa * tmp_inv % key.p
+
+# Check if computed Y (Y_c) and server's Y match
+print("\nComputed Y (Y_c):", Y_c)
+print("Server's Y:", Y)
+
+KC = pow(Y_c, key.x, key.p)  # KC = Y^x
+print("\nKc:", KC)
 
 
 ''' Ci computes AuthC = H2(Γ,S,X,A(Q(i)),Y,KC) and checks whether AuthS =? AuthC '''
-AuthC = h2(str(pwdList).encode('utf-8'), id_server.encode('utf-8'), str(X).encode('utf-8'),
-           str(AQi).encode('utf-8'), str(Y_c).encode('utf-8'), str(Kc).encode('utf-8'))
 
-print("AuthC:", AuthC.hexdigest())
+AuthC = h2(str(pwdList).encode('utf-8'), id_server.encode('utf-8'), str(X).encode('utf-8'),
+           str(AQi).encode('utf-8'), str(Y_c).encode('utf-8'), str(KC).encode('utf-8'))
+
+print("\nAuthC:", AuthC.hexdigest())
 print("AuthS:", AuthS.hexdigest())
 
 ''' If AuthS is valid, Ci accepts and computes the session-key skC as
 skC = H1(Γ,S,X,A(Q(i)),Y,KC). If AuthS is invalid then Ci aborts the protocol. '''
 
-if AuthC.hexdigest() == AuthS.hexdigest():
+if AuthC.hexdigest() == AuthS.hexdigest():  # Accept
     skC = h1(str(pwdList).encode('utf-8'), id_server.encode('utf-8'), str(X).encode('utf-8'),
-             str(AQi).encode('utf-8'), str(Y_c).encode('utf-8'), str(Kc).encode('utf-8'))
+             str(AQi).encode('utf-8'), str(Y_c).encode('utf-8'), str(KC).encode('utf-8'))
+
+    print("\nSuccessful.")
+    print("skC:", skC.hexdigest())
+
 else:
-    print("Incorrect Authentication. Aborting protocol...")
+    print("\nIncorrect Authentication. Aborting protocol...")
