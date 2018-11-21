@@ -11,7 +11,7 @@ from Crypto.PublicKey import ElGamal
 
 # HASH FUNCTIONS:
 
-# public cab = b"1"R
+# public cab = b"1"
 def f(data=None):
     """
     Create a new 512 hash object with cab = b"1"
