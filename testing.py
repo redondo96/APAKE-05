@@ -123,7 +123,7 @@ id_server = "server1"  # Server's identification string
 
 key = ElGamal.generate(512, Random.new().read)
 
-# Tests ElGamal:
+''' '# Tests ElGamal:
 print("\nModulus:", key.p)
 print("Order of the group:", key.p - 1, "\n")
 
@@ -134,271 +134,304 @@ print("Public key:", key.y)
 print("size of the public key in bits:", number.size(key.y), "\n")
 
 print("Private key:", key.x)
-print("size of the private key in bits:", number.size(key.x), "\n")
+print("size of the private key in bits:", number.size(key.x), "\n") '''
 
 
 # We need to select another generator, h
 q = (key.p - 1) // 2  # View ElGamal's implementation to find the value of q
 h = pow(key.g, number.getRandomRange(1, q, Random.new().read), key.p)
 
-print("Generator h:", h)
-print("size of the generator h in bits:", number.size(h), "\n")
+''' print("Generator h:", h)
+print("size of the generator h in bits:", number.size(h), "\n") '''
 
 
 # Possible values for 'number of users of the user group Γ' (i.e., of passwords in the password database at the sender)
-numUsersValues = list(range(1000, 20001, 1000))
-pwdBitLenValues = list(range(20, 51, 5))
+# numUsersValues = list(range(1000, 20001, 1000))
+numUsersValues = [1000, 5000, 10000, 15000, 20000]
+# Possible values for 'number of bits of a password'
+pwdBitLenValues = list(range(20, 51, 10))
 
-print("numUserValues:", numUsersValues)
-print("pwdBitLenValues:", pwdBitLenValues, "\n")
+''' print("numUserValues:", numUsersValues)
+print("pwdBitLenValues:", pwdBitLenValues, "\n") '''
 
 
 """ Saving information in a file """
 
-file1 = open("apake05.txt", 'w')
+''' file1 = open("apake05.txt", 'w')
 file1.write("generator g:\n" + str(key.g))
 file1.write("\ngenerator h:\n" + str(h))
-# file1.write("\nPassword list:\n" + str(pwdList) + "\n")
-file1.close()
+file1.close() '''
 
-# FILE WITH ELAPSED TIMES (RESULTS)
+# File with elapsed times (result)
 file2 = open("results.txt", 'w')
 file2.write("number of users\tpassword bit length\telapsed time (s)\n")  # header
 file2.close()
 
 """ Reading information from file """
 
-ge = 0
+''' ge = 0
 hache = 0
-# password_list = []
 with open("apake05.txt", 'r') as fp:
     for i, line in enumerate(fp):
         if i == 1:
             ge = int(line)  # 2nd line
         elif i == 3:
-            hache = int(line)  # 4th line
-        # elif i == 5:
-            # password_list = ast.literal_eval(line)  # 6th line
+            hache = int(line)  # 4th line '''
 
 ''' # Testing access to the read list
 print("\nge:", ge)
-print("hache:", hache)
-for i in list(password_list):
-    print("password_list:", i) '''
+print("hache:", hache) '''
 
 
 for numUsers in numUsersValues:
 
-    pwdBitLen = pwdBitLenValues[0]  # Number of bits of a password
+    for pwdBitLen in pwdBitLenValues:
 
-    ''' Let Γ be a user-group (or simply group) of n users {C1,...,Cn}.
-    Each user Ci in Γ is initially provided a distinct low entropy password pwi,
-    while S holds a list of these passwords. '''
+        timesList = []
 
-    pwdList = []
-    for i in range(numUsers):
-        pwd = random.randint(0, 2 ** pwdBitLen - 1)
-        pwdList.append(pwd)
+        ''' Let Γ be a user-group (or simply group) of n users {C1,...,Cn}.
+        Each user Ci in Γ is initially provided a distinct low entropy password pwi,
+        while S holds a list of these passwords. '''
 
-    print("pwdList:", pwdList)
+        pwdList = []
+        for i in range(numUsers):
+            pwd = random.randint(0, 2 ** pwdBitLen - 1)
+            pwdList.append(pwd)
 
-    index = random.choice(range(numUsers))  # User's password should be in Server's list
-    pwdUser = pwdList[index]
+        ''' print("pwdList:", pwdList) '''
 
-    # print("index (from 1 to numUsers):", index+1)
-    # print("pwdUser:", pwdUser)
+        """ Saving information in file """
 
-    """ To measure times """
-    starting_point = time.time()
+        ''' filec = open("apake05.txt", 'w')
+        filec.write("\nPassword list:\n" + str(pwdList))
+        filec.close() '''
 
-    ''' We set PWFi = F(pwi) and PWGi = G(i,pwi). '''
-    PWFi = []
-    PWGi = []
-    i = 1
-    for k in pwdList:
-        PWFi.append(f(str(k).encode('utf-8')))  # PWFi = F(pwi)                                     # str in k
-        PWGi.append(g(str(i).encode('utf-8'), str(k).encode('utf-8')))  # PWGi = G(i, pwi)          # str in k
-        i = i + 1
+        # We execute -----------------------------------------------------------------------------------------------------------
+        for it in range(1, 61):
 
-    ''' print("PWFi:")
-    for elem in PWFi:
-        print(len(elem.digest())*8) '''
+            """ Reading information from file """
 
-    print("\nPWGi:")
-    for elem in PWGi:
-        print(elem.hexdigest())
+            ''' password_list = []
+            with open("apake05.txt", 'r') as ffp:
+                for i, line in enumerate(ffp):
+                    if i == 5:
+                        password_list = ast.literal_eval(line)  # 6th line '''
 
-    """ Phase 1 """
-    ''' Ci chooses randomly and uniformly x,r ∈ Zp and computes X = g^x. '''
+            ''' # Testing access to the read list
+            for i in list(password_list):
+                print("password_list:", i) '''
 
-    X = key.y  # The public key of ElGamal key is y = g^x, so X = y
-    r = number.getRandomRange(2, key.p - 1, Random.new().read)  # We generate r ∈ Zp
+            index = random.choice(range(numUsers))  # User's password should be in Server's list
+            pwdUser = pwdList[index]
 
-    ''' Next, Ci generates a query Q(i) for the i-th data in OT protocol as
-    Q(i) = g^r h^G(i,pwi) = g^r h^PWGi. '''
+            # print("index (from 1 to numUsers):", index+1)
+            # print("pwdUser:", pwdUser)
 
-    tmp_gr = pow(key.g, r, key.p)
-    gi = PWGi[index]
-    # To check if it is well chosen
-    print("\ngi:", gi.hexdigest())  # i-th data in PWGi
-    tmp_hs = number.bytes_to_long(gi.digest()) % key.p
-    tmp_hp = pow(h, tmp_hs, key.p)
+            """ To measure times """
+            starting_point = time.time()
 
-    Qi = tmp_gr * tmp_hp % key.p
-    print("\nQuery Qi:", Qi)
-    print("size of Qi in bits:", number.size(Qi))
+            ''' We set PWFi = F(pwi) and PWGi = G(i,pwi). '''
+            PWFi = []
+            PWGi = []
+            i = 1
+            for k in pwdList:
+                PWFi.append(f(str(k).encode('utf-8')))  # PWFi = F(pwi)                                     # str in k
+                PWGi.append(g(str(i).encode('utf-8'), str(k).encode('utf-8')))  # PWGi = G(i, pwi)          # str in k
+                i = i + 1
 
-    ''' Ci sends (Γ, X, Q(i)) to S. '''
-    '''
-    We have all of the pieces:
+            ''' print("PWFi:")
+            for elem in PWFi:
+                print(len(elem.digest())*8) '''
 
-        Γ -> pwdList
-        X -> X
-        Q(i) -> Qi
-    '''
+            ''' print("\nPWGi:")
+            for elem in PWGi:
+                print(elem.hexdigest()) '''
 
-    """ Phase 2 """
-    ''' S chooses randomly and uniformly y, k1,...,kn ∈ Zp and computes Y = g^y
-    and αj, βj for 1 ≤ j ≤ n as follows:􏱅􏱆 􏱇 􏱈
-                                            αj =Y*g^F(pwj) = Y*g^PWFj, βj = H0(Q(i)(h^PWGj)^−1)^kj ,j) ⊕ αj. '''
+            """ Phase 1 """
+            ''' Ci chooses randomly and uniformly x,r ∈ Zp and computes X = g^x. '''
 
-    y_min = number.getRandomRange(2, key.p - 1, Random.new().read)  # We generate y ∈ Zp
-    Y = pow(key.g, y_min, key.p)
+            X = key.y  # The public key of ElGamal key is y = g^x, so X = y
+            r = number.getRandomRange(2, key.p - 1, Random.new().read)  # We generate r ∈ Zp
 
-    kn = []  # k1,...,kn ∈ Zp
-    for i in range(numUsers):
-        kn.append(number.getRandomRange(2, key.p - 1, Random.new().read))
+            ''' Next, Ci generates a query Q(i) for the i-th data in OT protocol as
+            Q(i) = g^r h^G(i,pwi) = g^r h^PWGi. '''
 
-    # print("\nk1...n:", kn)
+            tmp_gr = pow(key.g, r, key.p)
+            gi = PWGi[index]
+            ''' '# To check if it is well chosen
+            print("\ngi:", gi.hexdigest())  # i-th data in PWGi '''
+            tmp_hs = number.bytes_to_long(gi.digest()) % key.p
+            tmp_hp = pow(h, tmp_hs, key.p)
 
-    alfai = []  # αj for 1 ≤ j ≤ n
-    for pwf in PWFi:
-        tmp_hs = number.bytes_to_long(pwf.digest()) % key.p
-        tmp_exp = pow(key.g, tmp_hs, key.p)
-        tmp_mul = Y * tmp_exp % key.p
-        alfai.append(tmp_mul)
+            Qi = tmp_gr * tmp_hp % key.p
+            ''' print("\nQuery Qi:", Qi)
+            print("size of Qi in bits:", number.size(Qi)) '''
 
-    print("\nαi:", alfai)
-    print("List with size:", len(alfai))
+            ''' Ci sends (Γ, X, Q(i)) to S. '''
+            '''
+            We have all of the pieces:
+        
+                Γ -> pwdList
+                X -> X
+                Q(i) -> Qi
+            '''
 
-    betai = []  # βj for 1 ≤ j ≤ n
-    for n in range(numUsers):
-        tmp_hs = number.bytes_to_long(PWGi[n].digest()) % key.p
-        tmp_exp1 = pow(h, tmp_hs, key.p)
-        tmp_inv = number.inverse(tmp_exp1, key.p)
-        tmp_mul = Qi * tmp_inv % key.p
-        tmp_exp2 = pow(tmp_mul, kn[n], key.p)
-        tmp_hash = h0(str(tmp_exp2).encode('utf-8'), str(n + 1).encode('utf-8'))
-        if len(tmp_hash.digest()) != len(number.long_to_bytes(alfai[n], len(tmp_hash.digest()))):
-            raise ValueError('XOR operands have different sizes')
-        else:
-            tmp_xor = xor(tmp_hash.digest(), number.long_to_bytes(alfai[n], len(tmp_hash.digest())))
-            betai.append(tmp_xor)
+            """ Phase 2 """
+            ''' S chooses randomly and uniformly y, k1,...,kn ∈ Zp and computes Y = g^y
+            and αj, βj for 1 ≤ j ≤ n as follows:􏱅􏱆 􏱇 􏱈
+                                                    αj =Y*g^F(pwj) = Y*g^PWFj, βj = H0(Q(i)(h^PWGj)^−1)^kj ,j) ⊕ αj. '''
 
-    print("\nβi:", betai)
-    print("List with size:", len(betai))
+            y_min = number.getRandomRange(2, key.p - 1, Random.new().read)  # We generate y ∈ Zp
+            Y = pow(key.g, y_min, key.p)
 
-    ''' Let A(Q(i)) = (β1,...,βn,g^k1,...,g^kn), and let KS = X^y. '''
+            kn = []  # k1,...,kn ∈ Zp
+            for i in range(numUsers):
+                kn.append(number.getRandomRange(2, key.p - 1, Random.new().read))
 
-    gkn = []  # We already have β1,...,βn; but we have to calculate g^k1,...,g^kn
-    for exp in kn:
-        gk = pow(key.g, exp, key.p)
-        gkn.append(gk)
+            # print("\nk1...n:", kn)
 
-    print("\ngkn:", gkn)
+            alfai = []  # αj for 1 ≤ j ≤ n
+            for pwf in PWFi:
+                tmp_hs = number.bytes_to_long(pwf.digest()) % key.p
+                tmp_exp = pow(key.g, tmp_hs, key.p)
+                tmp_mul = Y * tmp_exp % key.p
+                alfai.append(tmp_mul)
 
-    AQi = betai + gkn  # AQi will be the concatenation of betai and gkn lists
-    print("\nA(Q(i)):", AQi)
-    print("List with size:", len(AQi))
+            ''' print("\nαi:", alfai)
+            print("List with size:", len(alfai)) '''
 
-    KS = pow(X, y_min, key.p)
-    print("\nKs:", KS)
+            betai = []  # βj for 1 ≤ j ≤ n
+            for n in range(numUsers):
+                tmp_hs = number.bytes_to_long(PWGi[n].digest()) % key.p
+                tmp_exp1 = pow(h, tmp_hs, key.p)
+                tmp_inv = number.inverse(tmp_exp1, key.p)
+                tmp_mul = Qi * tmp_inv % key.p
+                tmp_exp2 = pow(tmp_mul, kn[n], key.p)
+                tmp_hash = h0(str(tmp_exp2).encode('utf-8'), str(n + 1).encode('utf-8'))
+                if len(tmp_hash.digest()) != len(number.long_to_bytes(alfai[n], len(tmp_hash.digest()))):
+                    raise ValueError('XOR operands have different sizes')
+                else:
+                    tmp_xor = xor(tmp_hash.digest(), number.long_to_bytes(alfai[n], len(tmp_hash.digest())))
+                    betai.append(tmp_xor)
 
-    ''' S computes the authenticator AuthS and the session key skS as follows
-    AuthS = H2(Γ,S,X,A(Q(i)),Y,KS) and skS = H1(Γ,S,X,A(Q(i)),Y,KS). '''
+            ''' print("\nβi:", betai)
+            print("List with size:", len(betai)) '''
 
-    AuthS = h2(str(pwdList).encode('utf-8'), id_server.encode('utf-8'), str(X).encode('utf-8'),
-               str(AQi).encode('utf-8'), str(Y).encode('utf-8'), str(KS).encode('utf-8'))
+            ''' Let A(Q(i)) = (β1,...,βn,g^k1,...,g^kn), and let KS = X^y. '''
 
-    print("\nAuthS", AuthS.hexdigest())
-    # print("With size:", len(AuthS.digest())*8)
+            gkn = []  # We already have β1,...,βn; but we have to calculate g^k1,...,g^kn
+            for exp in kn:
+                gk = pow(key.g, exp, key.p)
+                gkn.append(gk)
 
-    skS = h1(str(pwdList).encode('utf-8'), id_server.encode('utf-8'), str(X).encode('utf-8'),
-             str(AQi).encode('utf-8'), str(Y).encode('utf-8'), str(KS).encode('utf-8'))
+            ''' print("\ngkn:", gkn) '''
 
-    print("\nskS:", skS.hexdigest())
-    # print("With size:", len(skS.digest())*8)
+            AQi = betai + gkn  # AQi will be the concatenation of betai and gkn lists
+            ''' print("\nA(Q(i)):", AQi)
+            print("List with size:", len(AQi)) '''
 
-    ''' S sends (S,A(Q(i)),AuthS) to Ci. '''
-    '''
-    We have all of the pieces:
+            KS = pow(X, y_min, key.p)
+            ''' print("\nKs:", KS) '''
 
-        S -> id_server
-        A(Q(i)) -> AQi
-        AuthS -> AuthS
-    '''
+            ''' S computes the authenticator AuthS and the session key skS as follows
+            AuthS = H2(Γ,S,X,A(Q(i)),Y,KS) and skS = H1(Γ,S,X,A(Q(i)),Y,KS). '''
 
-    """ Phase 3 """
-    ''' Ci extracts αi from A(Q(i)) as αi = βi ⊕ H0((g^ki)^r,i). '''
+            AuthS = h2(str(pwdList).encode('utf-8'), id_server.encode('utf-8'), str(X).encode('utf-8'),
+                       str(AQi).encode('utf-8'), str(Y).encode('utf-8'), str(KS).encode('utf-8'))
 
-    beta = AQi[index]  # βi will be in the [index] position of A(Q(i)) and g^ki will be in the [numUsers+index] position
-    gki = int(AQi[numUsers + index])  # It is an integer
-    print("\nbeta:", beta)
-    print("\ngki:", gki)
+            ''' print("\nAuthS", AuthS.hexdigest())
+            # print("With size:", len(AuthS.digest())*8) '''
 
-    tmp_exp = pow(gki, r, key.p)  # r generated before
-    tmp_hs = h0(str(tmp_exp).encode('utf-8'), str(index + 1).encode('utf-8'))
-    if len(beta) != len(tmp_hs.digest()):
-        raise ValueError('XOR operands have different sizes')
-    else:
-        alfa = number.bytes_to_long(xor(beta, tmp_hs.digest())) % key.p  # αi is an integer
+            skS = h1(str(pwdList).encode('utf-8'), id_server.encode('utf-8'), str(X).encode('utf-8'),
+                     str(AQi).encode('utf-8'), str(Y).encode('utf-8'), str(KS).encode('utf-8'))
 
-    # Check if extracted αi and server's αi match
-    print("\nalfa:", alfa)
-    print("alfai[index]:", alfai[index])
+            ''' print("\nskS:", skS.hexdigest())
+            # print("With size:", len(skS.digest())*8) '''
 
-    ''' Ci computes Y = αi(g^PWFi )^−1, KC = Y^x. '''
+            ''' S sends (S,A(Q(i)),AuthS) to Ci. '''
+            '''
+            We have all of the pieces:
+        
+                S -> id_server
+                A(Q(i)) -> AQi
+                AuthS -> AuthS
+            '''
 
-    tmp_fi = PWFi[index]
-    tmp_hs = number.bytes_to_long(tmp_fi.digest()) % key.p
-    tmp_exp = pow(key.g, tmp_hs, key.p)
-    tmp_inv = number.inverse(tmp_exp, key.p)
-    Y_c = alfa * tmp_inv % key.p
+            """ Phase 3 """
+            ''' Ci extracts αi from A(Q(i)) as αi = βi ⊕ H0((g^ki)^r,i). '''
 
-    # Check if computed Y (Y_c) and server's Y match
-    print("\nComputed Y (Y_c):", Y_c)
-    print("Server's Y:", Y)
+            beta = AQi[index]  # βi will be in [index] position of A(Q(i)) and g^ki will be in [numUsers+index] position
+            gki = int(AQi[numUsers + index])  # It is an integer
+            ''' print("\nbeta:", beta)
+            print("\ngki:", gki) '''
 
-    KC = pow(Y_c, key.x, key.p)  # KC = Y^x
-    print("\nKc:", KC)
+            tmp_exp = pow(gki, r, key.p)  # r generated before
+            tmp_hs = h0(str(tmp_exp).encode('utf-8'), str(index + 1).encode('utf-8'))
+            if len(beta) != len(tmp_hs.digest()):
+                raise ValueError('XOR operands have different sizes')
+            else:
+                alfa = number.bytes_to_long(xor(beta, tmp_hs.digest())) % key.p  # αi is an integer
 
-    ''' Ci computes AuthC = H2(Γ,S,X,A(Q(i)),Y,KC) and checks whether AuthS =? AuthC '''
+            ''' # Check if extracted αi and server's αi match
+            print("\nalfa:", alfa)
+            print("alfai[index]:", alfai[index]) '''
 
-    AuthC = h2(str(pwdList).encode('utf-8'), id_server.encode('utf-8'), str(X).encode('utf-8'),
-               str(AQi).encode('utf-8'), str(Y_c).encode('utf-8'), str(KC).encode('utf-8'))
+            ''' Ci computes Y = αi(g^PWFi )^−1, KC = Y^x. '''
 
-    print("\nAuthC:", AuthC.hexdigest())
-    print("AuthS:", AuthS.hexdigest())
+            tmp_fi = PWFi[index]
+            tmp_hs = number.bytes_to_long(tmp_fi.digest()) % key.p
+            tmp_exp = pow(key.g, tmp_hs, key.p)
+            tmp_inv = number.inverse(tmp_exp, key.p)
+            Y_c = alfa * tmp_inv % key.p
 
-    ''' If AuthS is valid, Ci accepts and computes the session-key skC as
-    skC = H1(Γ,S,X,A(Q(i)),Y,KC). If AuthS is invalid then Ci aborts the protocol. '''
+            ''' # Check if computed Y (Y_c) and server's Y match
+            print("\nComputed Y (Y_c):", Y_c)
+            print("Server's Y:", Y) '''
 
-    if AuthC.hexdigest() == AuthS.hexdigest():  # Accept
-        skC = h1(str(pwdList).encode('utf-8'), id_server.encode('utf-8'), str(X).encode('utf-8'),
-                 str(AQi).encode('utf-8'), str(Y_c).encode('utf-8'), str(KC).encode('utf-8'))
+            KC = pow(Y_c, key.x, key.p)  # KC = Y^x
+            ''' print("\nKc:", KC) '''
 
-        print("\nSuccessful.")
-        print("skC:", skC.hexdigest())
+            ''' Ci computes AuthC = H2(Γ,S,X,A(Q(i)),Y,KC) and checks whether AuthS =? AuthC '''
 
-    else:
-        print("\nIncorrect Authentication. Aborting protocol...")
-        sys.exit(1)
+            AuthC = h2(str(pwdList).encode('utf-8'), id_server.encode('utf-8'), str(X).encode('utf-8'),
+                       str(AQi).encode('utf-8'), str(Y_c).encode('utf-8'), str(KC).encode('utf-8'))
 
-    elapsed_time = time.time() - starting_point  # * 1000 (if milliseconds are wanted)
-    print(elapsed_time, "s")  # seconds
+            ''' print("\nAuthC:", AuthC.hexdigest())
+            print("AuthS:", AuthS.hexdigest()) '''
 
-    """ Saving time results in a file """
+            ''' If AuthS is valid, Ci accepts and computes the session-key skC as
+            skC = H1(Γ,S,X,A(Q(i)),Y,KC). If AuthS is invalid then Ci aborts the protocol. '''
+
+            if AuthC.hexdigest() == AuthS.hexdigest():  # Accept
+                skC = h1(str(pwdList).encode('utf-8'), id_server.encode('utf-8'), str(X).encode('utf-8'),
+                         str(AQi).encode('utf-8'), str(Y_c).encode('utf-8'), str(KC).encode('utf-8'))
+
+                print("\nAttemp n.", it, "-> Successful.")
+                ''' print("skC:", skC.hexdigest()) '''
+
+            else:
+                print("\nIncorrect Authentication. Aborting protocol...")
+                sys.exit(1)
+
+            elapsed_time = time.time() - starting_point  # * 1000 (if milliseconds are wanted)
+            ''' print(elapsed_time, "s")  # seconds '''
+            timesList.append(elapsed_time)
+            ''' print("list of times: ", timesList) '''
+
+        """ Calculating the average of the times """
+        media = sum(timesList)/len(timesList)
+        print("\nNumber of users: ", numUsers)
+        print("Length of the key (bits): ", pwdBitLen)
+        print("Average times: ", media, "\n")
+
+        print("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
+
+        """ Saving time results in a file """
+
+        file = open("results.txt", 'a')
+        file.write(str(numUsers) + "\t" + str(pwdBitLen) + "\t" + str(media).replace(".", ",") + "\n")
+        file.close()
 
     file = open("results.txt", 'a')
-    file.write(str(numUsers) + "\t" + str(pwdBitLen) + "\t" + str(elapsed_time).replace(".", ",") + "\n")
+    file.write("\n")
     file.close()
