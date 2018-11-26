@@ -1,6 +1,5 @@
 import sys
 import time
-# import ast
 
 from Crypto.Util import number
 from Crypto.Hash import SHA512
@@ -157,30 +156,10 @@ print("pwdBitLenValues:", pwdBitLenValues, "\n") '''
 
 """ Saving information in a file """
 
-''' file1 = open("apake05.txt", 'w')
-file1.write("generator g:\n" + str(key.g))
-file1.write("\ngenerator h:\n" + str(h))
-file1.close() '''
-
 # File with elapsed times (result)
-file2 = open("results.txt", 'w')
-file2.write("number of users\tpassword bit length\telapsed time (s)\n")  # header
-file2.close()
-
-""" Reading information from file """
-
-''' ge = 0
-hache = 0
-with open("apake05.txt", 'r') as fp:
-    for i, line in enumerate(fp):
-        if i == 1:
-            ge = int(line)  # 2nd line
-        elif i == 3:
-            hache = int(line)  # 4th line '''
-
-''' # Testing access to the read list
-print("\nge:", ge)
-print("hache:", hache) '''
+file = open("results.txt", 'w')
+file.write("number of users\tpassword bit length\telapsed time (s)\n")  # header
+file.close()
 
 
 for numUsers in numUsersValues:
@@ -200,26 +179,9 @@ for numUsers in numUsersValues:
 
         ''' print("pwdList:", pwdList) '''
 
-        """ Saving information in file """
-
-        ''' filec = open("apake05.txt", 'w')
-        filec.write("\nPassword list:\n" + str(pwdList))
-        filec.close() '''
-
-        # We execute -----------------------------------------------------------------------------------------------------------
-        for it in range(1, 61):
-
-            """ Reading information from file """
-
-            ''' password_list = []
-            with open("apake05.txt", 'r') as ffp:
-                for i, line in enumerate(ffp):
-                    if i == 5:
-                        password_list = ast.literal_eval(line)  # 6th line '''
-
-            ''' # Testing access to the read list
-            for i in list(password_list):
-                print("password_list:", i) '''
+        # We run the protocol 60 times to get an average time (more representative)
+        n_times = 60
+        for it in range(1, n_times+1):
 
             index = random.choice(range(numUsers))  # User's password should be in Server's list
             pwdUser = pwdList[index]
