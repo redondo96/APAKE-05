@@ -92,16 +92,32 @@ def h2(data1=None, data2=None, data3=None, data4=None, data5=None, data6=None):
     return hsh
 
 
-def xor(data1, data2):
+def xor(data1=None, data2=None):
     """
     Does a "bitwise exclusive or".
     Each bit of the output is the same as the corresponding bit in data1 if that bit in data2 is 0,
     and it's the complement of the bit in data1 if that bit in data2 is 1.
 
-    data1: the first bit string of the operation
-    data2: the second bit string of the operation
+    data1: default = None; the first bit string of the operation
+    data2: default = None; the second bit string of the operation
     """
+
     return bytearray(a ^ b for a, b in zip(*map(bytearray, [data1, data2])))
+
+
+def password_generator(num_users=1000, password_length=20):
+    """
+    Returns a list of [num_users] random passwords with size password_length.
+
+    num_users: default = 1000; number of passwords that will be generated (override to generate less/more passwords)
+    password_length: default = 20; override to provide smaller/larger passwords
+    """
+
+    password_list = []
+    for ind in range(num_users):
+        password = random.randint(0, 2 ** password_length - 1)
+        password_list.append(password)
+    return password_list
 
 
 """ setUp() """
@@ -152,27 +168,22 @@ for numUsers in numUsersValues:
 
         # Variable with the times of the different executions (now empty)
         timesList = []
-        timesList_proc = []
 
         ''' Let Γ be a user-group (or simply group) of n users {C1,...,Cn}.
         Each user Ci in Γ is initially provided a distinct low entropy password pwi,
         while S holds a list of these passwords. '''
 
-        pwdList = []
-        for i in range(numUsers):
-            pwd = random.randint(0, 2 ** pwdBitLen - 1)
-            pwdList.append(pwd)
+        pwdList = password_generator(numUsers, pwdBitLen)
 
         # We run the protocol 60 times to get an average time of execution (more representative)
         n_times = 60
         for t in range(n_times):
 
-            index = random.choice(range(numUsers))  # User's password should be in Server's list
+            index = random.choice(range(len(pwdList)))  # User's password should be in Server's list
             pwdUser = pwdList[index]
 
             # Starting point for runtime calculation
             starting_point = time.perf_counter()
-            starting_point_proc = time.process_time()
 
             ''' We set PWFi = F(pwi) and PWGi = G(i,pwi). '''
             PWFi = []
@@ -317,25 +328,16 @@ for numUsers in numUsersValues:
 
             # End point for runtime calculation
             end_point = time.perf_counter()
-            end_point_proc = time.process_time()
 
             # Elapsed time
             elapsed_time = end_point - starting_point  # In seconds
-            elapsed_time_proc = end_point_proc - starting_point_proc  # In seconds
-
             timesList.append(elapsed_time)
-            timesList_proc.append(elapsed_time_proc)
 
         """ Calculating the average of the times """
 
-        print("\nList of times: ", timesList)
-        print("List of times (processor): ", timesList_proc)
-
         average = sum(timesList) / len(timesList)
-        average_proc = sum(timesList_proc) / len(timesList_proc)
 
-        print("\nElapsed time (average): ", average)
-        print("CPU process time (average): ", average_proc, "\n")
+        print("\nElapsed time (average): ", average, "s\n")
 
         """ Saving time results in a file """
 
