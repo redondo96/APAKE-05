@@ -164,7 +164,7 @@ for numUsers in numUsersValues:
         print("\n==============================")
         print("Number of users: ", numUsers)
         print("Length of the key: ", pwdBitLen, "bits")
-        print("==============================", "\n")
+        print("==============================\n")
 
         # Variable with the times of the different executions (now empty)
         timesList = []
