@@ -138,10 +138,18 @@ id_server = "server1"  # Server's identification string
 
 key = ElGamal.generate(512, Random.new().read)
 
-
 # We need to select another generator, h
 q = (key.p - 1) // 2  # View ElGamal's implementation to find the value of q
 h = pow(key.g, number.getRandomRange(1, q, Random.new().read), key.p)
+
+
+''' PUBLIC INFORMATION: '''
+
+#: Group G
+#: key.g                # generator g of G
+#: h                    # generator h of G
+#: key.p                # group order p
+#: f, g, h0, h1, h2     # hash functions
 
 
 # Possible values for 'number of users in the group Γ' (i.e., of passwords in the password database at the sender)
