@@ -174,7 +174,7 @@ for numUsers in numUsersValues:
         print("Length of the key: ", pwdBitLen, "bits")
         print("==============================\n")
 
-        # Variable with the times of the different executions (now empty)
+        # Variable with the execution times of the different executions (now empty)
         timesList = []
 
         ''' Let Γ be a user-group (or simply group) of n users {C1,...,Cn}.
