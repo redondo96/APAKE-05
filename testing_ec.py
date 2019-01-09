@@ -153,7 +153,7 @@ priv_key, pub_key = keys.gen_keypair(ec)
 
 # We need to select another point of the curve, Q
 d = keys.gen_private_key(ec)
-Q = priv_key * P  # P * priv_key works fine too i.e. order doesn't matter
+Q = d * P  # P * d works fine too i.e. order doesn't matter
 
 
 ''' PUBLIC INFORMATION: '''
@@ -167,16 +167,9 @@ Q = priv_key * P  # P * priv_key works fine too i.e. order doesn't matter
 
 exp_pub_key = priv_key * P
 
-print("exp_pub_key:", exp_pub_key) # good
+print("exp_pub_key:", exp_pub_key)  # good
 print("pub_key:", pub_key)
 print("priv_key:", priv_key, "\n")
-
-
-
-"""The reason there are two ways to generate a keypair is that generating the public key requires
-a point multiplication, which can be expensive. That means sometimes you may want to delay
-generating the public key until it is actually needed."""
-
 
 
 # generate a private key for curve P256
