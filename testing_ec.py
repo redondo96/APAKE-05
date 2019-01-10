@@ -1,4 +1,7 @@
-# from Crypto.Util import number
+# import sys
+import time
+
+from Crypto.Util import number
 from Crypto.Hash import SHA256
 from Crypto.Random import random
 
@@ -119,19 +122,19 @@ id_server = "server1"  # Server's identification string
 #:
 #: Curves will only have the following entries:
 #:
-#:  - name (str)    : The name of the curve
-#:  - p (long)      : The value of p in the curve equation.
-#:  - a (long)      : The value of a in the curve equation.
-#:  - b (long)      : The value of b in the curve equation.
-#:  - q (long)      : The order of the base point of the curve.
-#:  - gx (long)     : The x coordinate of the base point of the curve.
-#:  - gy (long)     : The y coordinate of the base point of the curve.
-#:  - oid (str)     : The object identifier of the curve (optional).
+#:  - name (str) :  The name of the curve
+#:  - p (long)   :  The value of p in the curve equation.
+#:  - a (long)   :  The value of a in the curve equation.
+#:  - b (long)   :  The value of b in the curve equation.
+#:  - q (long)   :  The order of the base point of the curve.
+#:  - gx (long)  :  The x coordinate of the base point of the curve.
+#:  - gy (long)  :  The y coordinate of the base point of the curve.
+#:  - oid (str)  :  The object identifier of the curve (optional).
 
 # We have chosen the curve P256/secp256r1, proposed by NIST/NSA
 ec = curve.P256  # E(G)
 
-#: For this curve, the domain parameters are:
+#: For this curve, the domain parameters are:  sería necesario incluir esta información ????????????????????????????????
 #:
 #:  p: 115792089210356248762697446949407573530086143415290314195533631308867097853951
 #:
@@ -151,32 +154,164 @@ P = Point(ec.gx, ec.gy, ec)
 # And we generate a keypair (i.e. both keys) for this curve
 priv_key, pub_key = keys.gen_keypair(ec)
 
+print("priv_key:", priv_key, "\n")
+
+''' # Test if pub_key = priv_key * base_point
+calc_pub_key = priv_key * P
+print("calc_pub_key:", calc_pub_key)
+print("pub_key:", pub_key, "\n") '''
+
 # We need to select another point of the curve, Q
-d = keys.gen_private_key(ec)
+d = keys.gen_private_key(ec)  # generate another private key for curve P256
+print("d:", d)
 Q = d * P  # P * d works fine too i.e. order doesn't matter
+# get the public key corresponding to the scalar (private key) we just generated
+Q_2 = keys.get_public_key(d, ec)
+
+print("Q:", Q)
+print("Q_2:", Q_2)
 
 
 ''' PUBLIC INFORMATION: '''
 
 #: ec                   # Elliptic curve E(G)
 #: P                    # point P of E(G)
-#: Q                    # another point Q of G
+#: Q                    # another point Q of E(G)
 #: ec.p                 # group order p
 #: f, g, h0, h1, h2     # hash functions
 
 
-exp_pub_key = priv_key * P
+# Possible values for 'number of users in the group Γ' (i.e., of passwords in the password database at the sender)
+numUsersValues = [100]
+# Possible values for 'number of bits of the passwords'
+pwdBitLenValues = [30]
 
-print("exp_pub_key:", exp_pub_key)  # good
-print("pub_key:", pub_key)
-print("priv_key:", priv_key, "\n")
+
+""" File with elapsed times (results) """
+
+file = open("results_ec.txt", 'w')
+file.write("number of users\tpassword bit length\telapsed time (s)\n")  # header
+file.close()
 
 
-# generate a private key for curve P256
-priv_key2 = keys.gen_private_key(ec)
+for numUsers in numUsersValues:
 
-# get the public key corresponding to the private key we just generated
-pub_key2 = keys.get_public_key(priv_key2, ec)
+    for pwdBitLen in pwdBitLenValues:
 
-print(priv_key2)
-print(pub_key2)
+        print("\n==============================")
+        print("Number of users: ", numUsers)
+        print("Length of the key: ", pwdBitLen, "bits")
+        print("==============================\n")
+
+        # Variable with the execution times of the different executions (now empty)
+        timesList = []
+
+        ''' Let Γ be a user-group (or simply group) of n users {C1,...,Cn}.
+        Each user Ci in Γ is initially provided a distinct low entropy password pwi,
+        while S holds a list of these passwords. '''
+
+        pwdList = password_generator(numUsers, pwdBitLen)
+
+        # We run the protocol 60 times to get an average time of execution (more representative)
+        n_times = 1
+        for t in range(n_times):
+
+            index = random.choice(range(len(pwdList)))  # User's password should be in Server's list
+            pwdUser = pwdList[index]
+
+            # Starting point for runtime calculation
+            starting_point = time.perf_counter()
+
+            ''' We set PWFi = F(pwi) and PWGi = G(i,pwi). '''
+            PWFi = []
+            PWGi = []
+            i = 1
+            for k in pwdList:
+                PWFi.append(f(str(k).encode('utf-8')))  # PWFi = F(pwi)                                     # str in k
+                PWGi.append(g(str(i).encode('utf-8'), str(k).encode('utf-8')))  # PWGi = G(i, pwi)          # str in k
+                i = i + 1
+
+            """ Phase 1 """
+
+            ''' Ci chooses randomly and uniformly x,r ∈ Zp and computes X = x * P. '''
+
+            X = pub_key  # The private key is chosen randomly and uniformly in Zp, so it can be x;
+            # and public key = priv_key * P, so X = pub_key
+            r = keys.gen_private_key(ec)  # We can generate r ∈ Zp as a private key
+            print("r:", r, "\n")
+
+            ''' Next, Ci generates a query Q(i) for the i-th data in OT protocol as
+            Q(i) = r * P + G(i,pwi) * Q = r * P + PWGi * Q. '''
+
+            # tmp_gr = pow(key.g, r, key.p)
+            # gi = PWGi[index]
+            # tmp_hs = number.bytes_to_long(gi.digest()) % key.p
+            # tmp_hp = pow(h, tmp_hs, key.p)
+
+            # Qi = tmp_gr * tmp_hp % key.p
+            gi = PWGi[index]
+            tmp_hs = number.bytes_to_long(gi.digest()) % ec.p  # módulo ????????????????????????????????????????????????
+            tmp_hs_2 = number.bytes_to_long(gi.digest())  # no varía casi nunca (para casos extremos) ------------------
+            print(tmp_hs)
+            print(tmp_hs_2, "\n")  # -----------------------------------------------------------------------------------------
+
+            Qi = r * P + tmp_hs * Q
+            print("Qi:", Qi, "\n")
+
+            ''' Ci sends (Γ, X, Q(i)) to S. '''
+            '''
+            We have all of the pieces:
+
+                Γ -> pwdList
+                X -> X
+                Q(i) -> Qi
+            '''
+
+            """ Phase 2 """
+
+            ''' S chooses randomly and uniformly y, k1,...,kn ∈ Zp and computes Y = g^y
+            and αj, βj for 1 ≤ j ≤ n as follows:􏱅􏱆 􏱇 􏱈
+                                                αj =Y*g^F(pwj) = Y*g^PWFj, βj = H0(Q(i)(h^PWGj)^−1)^kj ,j) ⊕ αj. '''
+
+            y_min = keys.gen_private_key(ec)  # We can generate y ∈ Zp as a private key
+            Y = y_min * P
+
+            kn = []  # k1,...,kn ∈ Zp as private keys
+            for i in range(numUsers):
+                kn.append(keys.gen_private_key(ec))
+
+            # for i in kn:
+                # print(i)
+
+            alfai = []  # αj for 1 ≤ j ≤ n
+            for pwf in PWFi:
+                tmp_hs = number.bytes_to_long(pwf.digest()) % ec.p  # módulo ???????????????????????????????????????????
+                tmp_result = Y + tmp_hs * P
+                alfai.append(tmp_result)
+
+            for i in alfai:
+                print(i)
+
+            betai = []  # βj for 1 ≤ j ≤ n
+            for n in range(numUsers):
+                tmp_hs = number.bytes_to_long(PWGi[n].digest()) % ec.p  # módulo ???????????????????????????????????????
+                tmp_result = kn[n] * (Qi - tmp_hs * Q)
+                # print(tmp_result)
+                tmp_hash = h0(str(tmp_result).encode('utf-8'), str(n + 1).encode('utf-8'))
+                # print(tmp_hash.digest())
+
+                # print(len(tmp_hash.digest()))
+
+                # equis = alfai[n].x
+                # yy = alfai[n].y
+
+                # print(len(number.long_to_bytes(equis, len(tmp_hash.digest()))))
+                # print(len(number.long_to_bytes(yy, len(tmp_hash.digest()))), "\n")
+
+                print(len(alfai[n].__str__().encode('utf-8')))
+
+                ''' if len(tmp_hash.digest()) != alfai[n].__sizeof__():
+                    raise ValueError('XOR operands have different sizes')
+                else:
+                    tmp_xor = xor(tmp_hash.digest(), number.long_to_bytes(alfai[n], len(tmp_hash.digest())))
+                    betai.append(tmp_xor) '''
