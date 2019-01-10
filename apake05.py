@@ -232,7 +232,7 @@ for numUsers in numUsersValues:
 
             ''' S chooses randomly and uniformly y, k1,...,kn ∈ Zp and computes Y = g^y
             and αj, βj for 1 ≤ j ≤ n as follows:􏱅􏱆 􏱇 􏱈
-                                                αj =Y*g^F(pwj) = Y*g^PWFj, βj = H0(Q(i)(h^PWGj)^−1)^kj ,j) ⊕ αj. '''
+                                                αj =Y*g^F(pwj) = Y*g^PWFj, βj = H0(Q(i)(h^PWGj)^−1)^kj, j) ⊕ αj. '''
 
             y_min = number.getRandomRange(2, key.p - 1, Random.new().read)  # We generate y ∈ Zp
             Y = pow(key.g, y_min, key.p)
@@ -293,7 +293,7 @@ for numUsers in numUsersValues:
 
             """ Phase 3 """
 
-            ''' Ci extracts αi from A(Q(i)) as αi = βi ⊕ H0((g^ki)^r,i). '''
+            ''' Ci extracts αi from A(Q(i)) as αi = βi ⊕ H0((g^ki)^r, i). '''
 
             beta = AQi[index]  # βi will be in [index] position of A(Q(i)) and g^ki will be in [numUsers+index] position
             gki = int(AQi[numUsers + index])  # It is an integer
