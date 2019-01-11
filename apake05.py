@@ -305,7 +305,7 @@ for numUsers in numUsersValues:
             else:
                 alfa = number.bytes_to_long(xor(beta, tmp_hs.digest())) % key.p  # αi is an integer
 
-            ''' Ci computes Y = αi(g^PWFi )^−1, KC = Y^x. '''
+            ''' Ci computes Y = αi(g^PWFi)^−1, KC = Y^x. '''
 
             tmp_fi = PWFi[index]
             tmp_hs = number.bytes_to_long(tmp_fi.digest()) % key.p
