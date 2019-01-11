@@ -1,11 +1,11 @@
 import sys
 import time
 
-from Crypto.Util import number
-from Crypto.Hash import SHA512
 from Crypto import Random
-from Crypto.Random import random
+from Crypto.Hash import SHA512
 from Crypto.PublicKey import ElGamal
+from Crypto.Random import random
+from Crypto.Util import number
 
 
 # HASH FUNCTIONS:
