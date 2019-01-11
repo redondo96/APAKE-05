@@ -1,10 +1,9 @@
-# import sys
+import sys
 import time
 
-from Crypto.Util import number
 from Crypto.Hash import SHA256
 from Crypto.Random import random
-
+from Crypto.Util import number
 from fastecdsa import keys, curve
 from fastecdsa.point import Point
 
@@ -114,15 +113,30 @@ def password_generator(num_users=1000, password_length=20):
     return password_list
 
 
+def str_to_point(string="", curv=curve.P256):
+    """
+    Returns a Point of the curve 'curv' from the point-formatted string 'string'.
+    str: default = ""; the string that is going to be turned into a Point (it must be point-formatted,
+                        i.e. it has had to be created from a point using 'str', 'unicode' or 'repr' methods)
+    curv: default = curve.P256; the default curve where the point is going to be
+    """
+
+    parts = string.split("\n")
+    x = int(parts[0].split(" ")[1], 16)  # The x coordinate of the base point of the curve (int)
+    y = int(parts[1].split(" ")[1], 16)  # The y coordinate of the base point of the curve (int)
+    # Creation of the point
+    return Point(x, y, curv)
+
+
 """ setUp() """
 
 id_server = "server1"  # Server's identification string
 
 #: Dictionary of Curve parameters.
 #:
-#: Curves will only have the following entries:
+#: Curves will have the following entries:
 #:
-#:  - name (str) :  The name of the curve
+#:  - name (str) :  The name of the curve.
 #:  - p (long)   :  The value of p in the curve equation.
 #:  - a (long)   :  The value of a in the curve equation.
 #:  - b (long)   :  The value of b in the curve equation.
@@ -137,21 +151,20 @@ ec = curve.P256  # E(G)
 #: For this curve, the domain parameters are:  sería necesario incluir esta información ????????????????????????????????
 #:
 #:  p: 115792089210356248762697446949407573530086143415290314195533631308867097853951
-#:
 #:  a: -3
 #:  b: 41058363725152142129326129780047268409114441015993725554835256314039467401291
-#:
 #:  q: 115792089210356248762697446949407573529996955224135760342422259061068512044369
-#:
 #:  gx: 48439561293906451759052585252797914202762949526041747995844080717082404635286
 #:  gy: 36134250956749795798585127919587881956611106672985015071877198253568414405109
-#:
 #:  oid: b'*\x86H\xce=\x03\x01\x07'
+#:
+#:
+#: Visit http://www.secg.org/sec2-v2.pdf to check this information is correct.
 
-# So the base point is
+# Therefore the base point is:
 P = Point(ec.gx, ec.gy, ec)
 
-# And we generate a keypair (i.e. both keys) for this curve
+# We generate a keypair (i.e. both keys) for this curve
 priv_key, pub_key = keys.gen_keypair(ec)
 
 print("priv_key:", priv_key, "\n")
@@ -182,12 +195,12 @@ print("Q_2:", Q_2)
 
 
 # Possible values for 'number of users in the group Γ' (i.e., of passwords in the password database at the sender)
-numUsersValues = [100]
+numUsersValues = [1000]
 # Possible values for 'number of bits of the passwords'
-pwdBitLenValues = [30]
+pwdBitLenValues = [20]
 
 
-""" File with elapsed times (results) """
+""" File with elapsed times (results_ec) """
 
 file = open("results_ec.txt", 'w')
 file.write("number of users\tpassword bit length\telapsed time (s)\n")  # header
@@ -213,10 +226,11 @@ for numUsers in numUsersValues:
         pwdList = password_generator(numUsers, pwdBitLen)
 
         # We run the protocol 60 times to get an average time of execution (more representative)
-        n_times = 1
+        n_times = 60
         for t in range(n_times):
 
             index = random.choice(range(len(pwdList)))  # User's password should be in Server's list
+            print("\nindex:", index, "\n")
             pwdUser = pwdList[index]
 
             # Starting point for runtime calculation
@@ -253,7 +267,7 @@ for numUsers in numUsersValues:
             tmp_hs = number.bytes_to_long(gi.digest()) % ec.p  # módulo ????????????????????????????????????????????????
             tmp_hs_2 = number.bytes_to_long(gi.digest())  # no varía casi nunca (para casos extremos) ------------------
             print(tmp_hs)
-            print(tmp_hs_2, "\n")  # -----------------------------------------------------------------------------------------
+            print(tmp_hs_2, "\n")  # -----------------------------------------------------------------------------------
 
             Qi = r * P + tmp_hs * Q
             print("Qi:", Qi, "\n")
@@ -271,10 +285,11 @@ for numUsers in numUsersValues:
 
             ''' S chooses randomly and uniformly y, k1,...,kn ∈ Zp and computes Y = g^y
             and αj, βj for 1 ≤ j ≤ n as follows:􏱅􏱆 􏱇 􏱈
-                                                αj =Y*g^F(pwj) = Y*g^PWFj, βj = H0(Q(i)(h^PWGj)^−1)^kj ,j) ⊕ αj. '''
+                                                αj =Y*g^F(pwj) = Y*g^PWFj, βj = H0(Q(i)(h^PWGj)^−1)^kj, j) ⊕ αj. '''  # CAMBIARRRR
 
             y_min = keys.gen_private_key(ec)  # We can generate y ∈ Zp as a private key
             Y = y_min * P
+            print("\nY:", Y, "\n")
 
             kn = []  # k1,...,kn ∈ Zp as private keys
             for i in range(numUsers):
@@ -292,26 +307,147 @@ for numUsers in numUsersValues:
             for i in alfai:
                 print(i)
 
+            print("\n")
+
             betai = []  # βj for 1 ≤ j ≤ n
             for n in range(numUsers):
                 tmp_hs = number.bytes_to_long(PWGi[n].digest()) % ec.p  # módulo ???????????????????????????????????????
                 tmp_result = kn[n] * (Qi - tmp_hs * Q)
                 # print(tmp_result)
                 tmp_hash = h0(str(tmp_result).encode('utf-8'), str(n + 1).encode('utf-8'))
+
                 # print(tmp_hash.digest())
 
                 # print(len(tmp_hash.digest()))
 
-                # equis = alfai[n].x
-                # yy = alfai[n].y
+                # print(len(number.long_to_bytes(alfai[n].x, len(tmp_hash.digest()))))
+                # print(len(number.long_to_bytes(alfai[n].y, len(tmp_hash.digest()))), "\n")
 
-                # print(len(number.long_to_bytes(equis, len(tmp_hash.digest()))))
-                # print(len(number.long_to_bytes(yy, len(tmp_hash.digest()))), "\n")
+                alfaib = str(alfai[n]).encode('utf-8')  # Bytes
+                # print(alfaib)
+                # print(len(alfaib))
 
-                print(len(alfai[n].__str__().encode('utf-8')))
+                lootro = number.long_to_bytes(number.bytes_to_long(tmp_hash.digest()), len(alfaib))
+                # Pa que tengan la misma long
+                # Así sobraría el if de comprobación
 
-                ''' if len(tmp_hash.digest()) != alfai[n].__sizeof__():
-                    raise ValueError('XOR operands have different sizes')
-                else:
-                    tmp_xor = xor(tmp_hash.digest(), number.long_to_bytes(alfai[n], len(tmp_hash.digest())))
-                    betai.append(tmp_xor) '''
+                # print(lootro)
+                # print(len(lootro), "\n")
+
+                tmp_xor = xor(lootro, alfaib)
+                betai.append(tmp_xor)
+
+            ''' Let A(Q(i)) = (β1,...,βn,g^k1,...,g^kn), and let KS = y * X. '''
+
+            Pkn = []  # We already have β1,...,βn; but we have to calculate k1 * P,...,kn * P
+            for exp in kn:
+                Pk = exp * P
+                Pkn.append(bytearray(str(Pk).encode('utf-8')))
+
+            AQi = betai + Pkn  # AQi will be the concatenation of betai and Pkn lists
+
+            KS = y_min * X
+            print("\nKS:", KS, "\n")
+
+            ''' S computes the authenticator AuthS and the session key skS as follows
+            AuthS = H2(Γ,S,X,A(Q(i)),Y,KS) and skS = H1(Γ,S,X,A(Q(i)),Y,KS). '''
+
+            AuthS = h2(str(pwdList).encode('utf-8'), id_server.encode('utf-8'), str(X).encode('utf-8'),
+                       str(AQi).encode('utf-8'), str(Y).encode('utf-8'), str(KS).encode('utf-8'))
+
+            print("\nAuthS:", AuthS.hexdigest(), "\n")
+
+            skS = h1(str(pwdList).encode('utf-8'), id_server.encode('utf-8'), str(X).encode('utf-8'),
+                     str(AQi).encode('utf-8'), str(Y).encode('utf-8'), str(KS).encode('utf-8'))
+
+            ''' S sends (S,A(Q(i)),AuthS) to Ci. '''
+            '''
+            We have all of the pieces:
+
+                S -> id_server
+                A(Q(i)) -> AQi
+                AuthS -> AuthS
+            '''
+
+            """ Phase 3 """
+
+            ''' Ci extracts αi from A(Q(i)) as αi = βi ⊕ H0(r * (ki * P), i). '''
+
+            beta = AQi[
+                index]  # βi will be in [index] position of A(Q(i)) and ki * P will be in [numUsers+index] position
+            tmp_Pki = AQi[numUsers + index]
+
+            # HAYQ UE CONVERTIR LOS BYTES A STR!!!
+            str_Pki = bytes(tmp_Pki).decode()
+            # Y el str a puntooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+            Pki = str_to_point(str_Pki)
+
+            tmp_mul = r * Pki  # r generated before
+            tmp_hs = h0(str(tmp_mul).encode('utf-8'), str(index + 1).encode('utf-8'))
+
+            lootro2 = number.long_to_bytes(number.bytes_to_long(tmp_hs.digest()), len(beta))
+
+            print(len(beta))
+            print(len(lootro2))
+
+            str_alfa = bytes(xor(beta, lootro2)).decode()
+            alfa = str_to_point(str_alfa)
+
+            # alfa = number.bytes_to_long(xor(beta, lootro2)) % ec.p  # αi is an integer  # módulo ???????????????
+            print("alfa:", alfa)
+
+            ''' Ci computes Y = αi - PWFi * P, KC = x * Y. '''
+
+            tmp_fi = PWFi[index]
+            tmp_hs = number.bytes_to_long(tmp_fi.digest()) % ec.p
+            # tmp_exp = pow(key.g, tmp_hs, key.p)
+            # tmp_inv = number.inverse(tmp_exp, key.p)
+            Y_c = alfa - tmp_hs * P
+            print("Y_c:", Y_c)
+
+            KC = priv_key * Y  # KC = x * Y
+            print("KC:", KC)
+
+            ''' Ci computes AuthC = H2(Γ,S,X,A(Q(i)),Y,KC) and checks whether AuthS =? AuthC '''
+
+            AuthC = h2(str(pwdList).encode('utf-8'), id_server.encode('utf-8'), str(X).encode('utf-8'),
+                       str(AQi).encode('utf-8'), str(Y_c).encode('utf-8'), str(KC).encode('utf-8'))
+
+            print("\nAuthC:", AuthC.hexdigest(), "\n")
+
+            ''' If AuthS is valid, Ci accepts and computes the session-key skC as
+            skC = H1(Γ,S,X,A(Q(i)),Y,KC). '''
+            '''If AuthS is invalid then Ci aborts the protocol. '''
+
+            if AuthC.hexdigest() == AuthS.hexdigest():  # Accept
+                skC = h1(str(pwdList).encode('utf-8'), id_server.encode('utf-8'), str(X).encode('utf-8'),
+                         str(AQi).encode('utf-8'), str(Y_c).encode('utf-8'), str(KC).encode('utf-8'))
+
+                print(t + 1, "... Successful")
+
+            else:
+                print("Incorrect Authentication. Aborting protocol...")
+                sys.exit(1)
+
+            # End point for runtime calculation
+            end_point = time.perf_counter()
+
+            # Elapsed time
+            elapsed_time = end_point - starting_point  # In seconds
+            timesList.append(elapsed_time)
+
+        """ Calculating the average of the times """
+
+        average = sum(timesList) / len(timesList)
+
+        print("\nElapsed time (average): ", average, "s\n")
+
+        """ Saving time results in a file """
+
+        file = open("results_ec.txt", 'a')
+        file.write(str(numUsers) + "\t" + str(pwdBitLen) + "\t" + str(average).replace(".", ",") + "\n")
+        file.close()
+
+    file = open("results_ec.txt", 'a')
+    file.write("\n")
+    file.close()
