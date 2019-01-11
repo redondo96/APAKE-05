@@ -232,7 +232,7 @@ for numUsers in numUsersValues:
 
             ''' S chooses randomly and uniformly y, k1,...,kn ∈ Zp and computes Y = g^y
             and αj, βj for 1 ≤ j ≤ n as follows:􏱅􏱆 􏱇 􏱈
-                                                αj =Y*g^F(pwj) = Y*g^PWFj, βj = H0(Q(i)(h^PWGj)^−1)^kj, j) ⊕ αj. '''
+                                                αj =Y*g^F(pwj) = Y*g^PWFj, βj = H0((Q(i)(h^PWGj)^−1)^kj, j) ⊕ αj. '''
 
             y_min = number.getRandomRange(2, key.p - 1, Random.new().read)  # We generate y ∈ Zp
             Y = pow(key.g, y_min, key.p)
