@@ -117,7 +117,7 @@ def str_to_point(string="", curv=curve.P256):
     """
     Returns a Point of the curve 'curv' from the point-formatted string 'string'.
     string: default = ""; the string that is going to be turned into a Point (it must be point-formatted,
-                        i.e. it has had to be created from a point using 'str', 'unicode' or 'repr' methods)
+                        i.e. it has had to be created from a point using 'str', 'unicode' or 'repr' functions)
     curv: default = curve.P256; the default curve where the point is going to be
     """
 
@@ -296,7 +296,7 @@ for numUsers in numUsersValues:
 
                 '''
                 Then, we turn the result of the hash operation into bytes.
-                We use the method 'long_to_bytes' in order to achieve the same byte-length in both operands of the xor
+                We use the 'long_to_bytes' function in order to achieve the same byte-length in both operands of the xor
                 '''
                 tmp_hash_completed = number.long_to_bytes(number.bytes_to_long(tmp_hash.digest()), len(bytes_alfai))
                 # The second parameter causes the front of the byte string to be padded with
@@ -347,7 +347,7 @@ for numUsers in numUsersValues:
             tmp_Pki = AQi[numUsers + index]
             # Pki is a bytearray-shaped Point. First, we have to turn this bytearray into a string
             str_Pki = bytes(tmp_Pki).decode()
-            # And then, we turn the string into a Point using the 'str_to_point' method previously implemented
+            # And then, we turn the string into a Point using the 'str_to_point' function previously implemented
             Pki = str_to_point(str_Pki)
 
             tmp_mul = r * Pki  # r generated before
@@ -355,7 +355,7 @@ for numUsers in numUsersValues:
 
             '''
             As before, we turn the result of the hash operation into bytes.
-            We use the method 'long_to_bytes' in order to achieve the same byte-length in both operands of the xor
+            We use the 'long_to_bytes' function in order to achieve the same byte-length in both operands of the xor
             '''
             tmp_hash_completed = number.long_to_bytes(number.bytes_to_long(tmp_hs.digest()), len(beta))
             # The second parameter causes the front of the byte string to be padded
@@ -363,7 +363,7 @@ for numUsers in numUsersValues:
 
             str_alfa = bytes(xor(beta, tmp_hash_completed)).decode()
 
-            # As alfa is a Point, we turn the string into a Point using the 'str_to_point' method
+            # As alfa is a Point, we turn the string into a Point using the 'str_to_point' function
             alfa = str_to_point(str_alfa)
 
             ''' Ci computes Y = αi - PWFi * P, KC = x * Y. '''
