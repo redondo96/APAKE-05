@@ -153,9 +153,9 @@ h = pow(key.g, number.getRandomRange(1, q, Random.new().read), key.p)
 
 
 # Possible values for 'number of users in the group Γ' (i.e., of passwords in the password database at the sender)
-numUsersValues = [1000, 5000, 10000, 15000, 20000]
+numUsersValues = [1000]  # , 5000, 10000, 15000, 20000]
 # Possible values for 'number of bits of the passwords'
-pwdBitLenValues = list(range(20, 51, 10))
+pwdBitLenValues = [32, 64, 128, 256, 512]
 
 
 """ File with elapsed times (results) """
@@ -177,21 +177,18 @@ for numUsers in numUsersValues:
         # Variable with the execution times of the different executions (now empty)
         timesList = []
 
-        ''' Let Γ be a user-group (or simply group) of n users {C1,...,Cn}.
-        Each user Ci in Γ is initially provided a distinct low entropy password pwi,
-        while S holds a list of these passwords. '''
-
-        pwdList = password_generator(numUsers, pwdBitLen)
-
         # We run the protocol 60 times to get an average time of execution (more representative)
         n_times = 60
         for t in range(n_times):
 
+            ''' Let Γ be a user-group (or simply group) of n users {C1,...,Cn}.
+            Each user Ci in Γ is initially provided a distinct low entropy password pwi,
+            while S holds a list of these passwords. '''
+
+            pwdList = password_generator(numUsers, pwdBitLen)
+
             index = random.choice(range(len(pwdList)))  # User's password should be in Server's list
             pwdUser = pwdList[index]
-
-            # Starting point for runtime calculation
-            starting_point = time.perf_counter()
 
             ''' We set PWFi = F(pwi) and PWGi = G(i,pwi). '''
             PWFi = []
@@ -201,6 +198,9 @@ for numUsers in numUsersValues:
                 PWFi.append(f(str(k).encode('utf-8')))  # PWFi = F(pwi)                                     # str in k
                 PWGi.append(g(str(i).encode('utf-8'), str(k).encode('utf-8')))  # PWGi = G(i, pwi)          # str in k
                 i = i + 1
+
+            # Starting point for runtime calculation
+            starting_point = time.perf_counter()
 
             """ Phase 1 """
 
@@ -212,12 +212,7 @@ for numUsers in numUsersValues:
             ''' Next, Ci generates a query Q(i) for the i-th data in OT protocol as
             Q(i) = g^r h^G(i,pwi) = g^r h^PWGi. '''
 
-            tmp_gr = pow(key.g, r, key.p)
-            gi = PWGi[index]
-            tmp_hs = number.bytes_to_long(gi.digest()) % key.p
-            tmp_hp = pow(h, tmp_hs, key.p)
-
-            Qi = tmp_gr * tmp_hp % key.p
+            Qi = (pow(key.g, r, key.p)) * (pow(h, (number.bytes_to_long(PWGi[index].digest()) % key.p), key.p)) % key.p
 
             ''' Ci sends (Γ, X, Q(i)) to S. '''
             '''
@@ -243,31 +238,26 @@ for numUsers in numUsersValues:
 
             alfai = []  # αj for 1 ≤ j ≤ n
             for pwf in PWFi:
-                tmp_hs = number.bytes_to_long(pwf.digest()) % key.p
-                tmp_exp = pow(key.g, tmp_hs, key.p)
-                tmp_mul = Y * tmp_exp % key.p
-                alfai.append(tmp_mul)
+                alfai.append(Y * (pow(key.g, (number.bytes_to_long(pwf.digest()) % key.p), key.p)) % key.p)
 
             betai = []  # βj for 1 ≤ j ≤ n
             for n in range(numUsers):
-                tmp_hs = number.bytes_to_long(PWGi[n].digest()) % key.p
-                tmp_exp1 = pow(h, tmp_hs, key.p)
-                tmp_inv = number.inverse(tmp_exp1, key.p)
-                tmp_mul = Qi * tmp_inv % key.p
+                # We divide the instruction into several lines to make it more readable
+                tmp_exp1 = pow(h, (number.bytes_to_long(PWGi[n].digest()) % key.p), key.p)
+                tmp_mul = Qi * (number.inverse(tmp_exp1, key.p)) % key.p
                 tmp_exp2 = pow(tmp_mul, kn[n], key.p)
                 tmp_hash = h0(str(tmp_exp2).encode('utf-8'), str(n + 1).encode('utf-8'))
+
                 if len(tmp_hash.digest()) != len(number.long_to_bytes(alfai[n], len(tmp_hash.digest()))):
                     raise ValueError('XOR operands have different sizes')
                 else:
-                    tmp_xor = xor(tmp_hash.digest(), number.long_to_bytes(alfai[n], len(tmp_hash.digest())))
-                    betai.append(tmp_xor)
+                    betai.append(xor(tmp_hash.digest(), number.long_to_bytes(alfai[n], len(tmp_hash.digest()))))
 
             ''' Let A(Q(i)) = (β1,...,βn,g^k1,...,g^kn), and let KS = X^y. '''
 
             gkn = []  # We already have β1,...,βn; but we have to calculate g^k1,...,g^kn
             for exp in kn:
-                gk = pow(key.g, exp, key.p)
-                gkn.append(gk)
+                gkn.append(pow(key.g, exp, key.p))
 
             AQi = betai + gkn  # AQi will be the concatenation of betai and gkn lists
 
@@ -298,8 +288,8 @@ for numUsers in numUsersValues:
             beta = AQi[index]  # βi will be in [index] position of A(Q(i)) and g^ki will be in [numUsers+index] position
             gki = int(AQi[numUsers + index])  # It is an integer
 
-            tmp_exp = pow(gki, r, key.p)  # r generated before
-            tmp_hs = h0(str(tmp_exp).encode('utf-8'), str(index + 1).encode('utf-8'))
+            tmp_hs = h0(str(pow(gki, r, key.p)).encode('utf-8'), str(index + 1).encode('utf-8'))  # r generated before
+
             if len(beta) != len(tmp_hs.digest()):
                 raise ValueError('XOR operands have different sizes')
             else:
@@ -307,11 +297,8 @@ for numUsers in numUsersValues:
 
             ''' Ci computes Y = αi(g^PWFi)^−1, KC = Y^x. '''
 
-            tmp_fi = PWFi[index]
-            tmp_hs = number.bytes_to_long(tmp_fi.digest()) % key.p
-            tmp_exp = pow(key.g, tmp_hs, key.p)
-            tmp_inv = number.inverse(tmp_exp, key.p)
-            Y_c = alfa * tmp_inv % key.p
+            tmp_exp = pow(key.g, (number.bytes_to_long(PWFi[index].digest()) % key.p), key.p)
+            Y_c = alfa * (number.inverse(tmp_exp, key.p)) % key.p
 
             KC = pow(Y_c, key.x, key.p)  # KC = Y^x
 
