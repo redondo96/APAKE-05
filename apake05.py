@@ -1,3 +1,16 @@
+"""apake05.py: Executes Viet et al.'s key establishment protocol."""
+
+__author__ = "Javier Redondo"
+__copyright__ = "Copyright 2019, Universidad Rey Juan Carlos"
+__credits__ = ["Javier Redondo", "Claudio Soriente"]
+
+__license__ = "GPL"
+__version__ = "1.0"
+__maintainer__ = "Javier Redondo"
+__email__ = "j.redondoa@alumnos.urjc.es"
+__status__ = "Production"
+
+
 import sys
 import time
 
@@ -153,9 +166,9 @@ h = pow(key.g, number.getRandomRange(1, q, Random.new().read), key.p)
 
 
 # Possible values for 'number of users in the group Γ' (i.e., of passwords in the password database at the sender)
-numUsersValues = [1000]  # , 5000, 10000, 15000, 20000]
+numUsersValues = [1000, 5000, 10000, 15000, 20000]
 # Possible values for 'number of bits of the passwords'
-pwdBitLenValues = [32, 64, 128, 256, 512]
+pwdBitLenValues = [32, 64, 128, 256]
 
 
 """ File with elapsed times (results) """
@@ -169,6 +182,7 @@ for numUsers in numUsersValues:
 
     for pwdBitLen in pwdBitLenValues:
 
+        # Log
         print("\n==============================")
         print("Number of users: ", numUsers)
         print("Length of the key: ", pwdBitLen, "bits")
@@ -309,13 +323,14 @@ for numUsers in numUsersValues:
 
             ''' If AuthS is valid, Ci accepts and computes the session-key skC as
             skC = H1(Γ,S,X,A(Q(i)),Y,KC). '''
-            '''If AuthS is invalid then Ci aborts the protocol. '''
+
+            ''' If AuthS is invalid then Ci aborts the protocol. '''
 
             if AuthC.hexdigest() == AuthS.hexdigest():  # Accept
                 skC = h1(str(pwdList).encode('utf-8'), id_server.encode('utf-8'), str(X).encode('utf-8'),
                          str(AQi).encode('utf-8'), str(Y_c).encode('utf-8'), str(KC).encode('utf-8'))
 
-                print(t + 1, "... Successful")
+                print(t + 1, "... Successful")  # Log
 
             else:
                 print("Incorrect Authentication. Aborting protocol...")
@@ -330,9 +345,9 @@ for numUsers in numUsersValues:
 
         """ Calculating the average of the times """
 
-        average = sum(timesList) / len(timesList)
+        average = round((sum(timesList) / len(timesList)), 4)  # 4 decimals
 
-        print("\nElapsed time (average): ", average, "s\n")
+        print("\nElapsed time (average): ", average, "s\n")  # Log
 
         """ Saving time results in a file """
 
