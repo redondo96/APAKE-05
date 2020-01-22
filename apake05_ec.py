@@ -1,3 +1,16 @@
+"""apake05_ec.py: Executes a key establishment protocol using elliptic curves."""
+
+__author__ = "Javier Redondo"
+__copyright__ = "Copyright 2019, Universidad Rey Juan Carlos"
+__credits__ = ["Javier Redondo", "Claudio Soriente"]
+
+__license__ = "GPL"
+__version__ = "1.0"
+__maintainer__ = "Javier Redondo"
+__email__ = "j.redondoa@alumnos.urjc.es"
+__status__ = "Production"
+
+
 import sys
 import time
 
@@ -148,7 +161,7 @@ id_server = "server1"  # Server's identification string
 # We have chosen the curve P256/secp256r1, proposed by NIST/NSA
 ec = curve.P256  # E(G)
 
-#: For this curve, the domain parameters are:  # sería necesario incluir esta información ???????????????????????????????
+#: For this curve, the domain parameters are:
 #:
 #:  p: 115792089210356248762697446949407573530086143415290314195533631308867097853951
 #:  a: -3
@@ -189,7 +202,7 @@ i.e. getting the public key corresponding to the private key we just generated
 # Possible values for 'number of users in the group Γ' (i.e., of passwords in the password database at the sender)
 numUsersValues = [1000, 5000, 10000, 15000, 20000]
 # Possible values for 'number of bits of the passwords'
-pwdBitLenValues = list(range(20, 51, 10))
+pwdBitLenValues = [32, 64, 128, 256]
 
 
 """ File with elapsed times (results_ec) """
@@ -203,6 +216,7 @@ for numUsers in numUsersValues:
 
     for pwdBitLen in pwdBitLenValues:
 
+        # Log
         print("\n==============================")
         print("Number of users: ", numUsers)
         print("Length of the key: ", pwdBitLen, "bits")
@@ -211,21 +225,18 @@ for numUsers in numUsersValues:
         # Variable with the execution times of the different executions (now empty)
         timesList = []
 
-        ''' Let Γ be a user-group (or simply group) of n users {C1,...,Cn}.
-        Each user Ci in Γ is initially provided a distinct low entropy password pwi,
-        while S holds a list of these passwords. '''
-
-        pwdList = password_generator(numUsers, pwdBitLen)
-
         # We run the protocol 60 times to get an average time of execution (more representative)
         n_times = 60
         for t in range(n_times):
 
+            ''' Let Γ be a user-group (or simply group) of n users {C1,...,Cn}.
+            Each user Ci in Γ is initially provided a distinct low entropy password pwi,
+            while S holds a list of these passwords. '''
+
+            pwdList = password_generator(numUsers, pwdBitLen)
+
             index = random.choice(range(len(pwdList)))  # User's password should be in Server's list
             pwdUser = pwdList[index]
-
-            # Starting point for runtime calculation
-            starting_point = time.perf_counter()
 
             ''' We set PWFi = F(pwi) and PWGi = G(i,pwi). '''
             PWFi = []
@@ -235,6 +246,9 @@ for numUsers in numUsersValues:
                 PWFi.append(f(str(k).encode('utf-8')))  # PWFi = F(pwi)                                     # str in k
                 PWGi.append(g(str(i).encode('utf-8'), str(k).encode('utf-8')))  # PWGi = G(i, pwi)          # str in k
                 i = i + 1
+
+            # Starting point for runtime calculation
+            starting_point = time.perf_counter()
 
             """ Phase 1 """
 
@@ -250,9 +264,7 @@ for numUsers in numUsersValues:
             ''' Next, Ci generates a query Q(i) for the i-th data in OT protocol as
             Q(i) = r * P + G(i,pwi) * Q = r * P + PWGi * Q. '''
 
-            gi = PWGi[index]
-            tmp_hs = number.bytes_to_long(gi.digest()) % ec.p  # módulo? [no varía casi nunca (para casos extremos)] ????
-            Qi = r * P + tmp_hs * Q
+            Qi = r * P + (number.bytes_to_long(PWGi[index].digest()) % ec.p) * Q
 
             ''' Ci sends (Γ, X, Q(i)) to S. '''
             '''
@@ -267,7 +279,7 @@ for numUsers in numUsersValues:
 
             ''' S chooses randomly and uniformly y, k1,...,kn ∈ Zp and computes Y = y * P
             and αj, βj for 1 ≤ j ≤ n as follows:􏱅􏱆 􏱇 􏱈
-                                            αj =Y*g^F(pwj) = Y + PWFj * P, βj = H0(kj * (Q(i) - PWGj * Q), j) ⊕ αj. '''
+                                        αj = Y + F(pwj) * P = Y + PWFj * P, βj = H0(kj * (Q(i) - PWGj * Q), j) ⊕ αj. '''
 
             y_min = keys.gen_private_key(ec)  # We can generate y ∈ Zp as a private key
             Y = y_min * P
@@ -278,15 +290,12 @@ for numUsers in numUsersValues:
 
             alfai = []  # αj for 1 ≤ j ≤ n
             for pwf in PWFi:
-                tmp_hs = number.bytes_to_long(pwf.digest()) % ec.p  # módulo ????????????????????????????????????????????
-                tmp_result = Y + tmp_hs * P
-                alfai.append(tmp_result)
+                alfai.append(Y + (number.bytes_to_long(pwf.digest()) % ec.p) * P)
 
             betai = []  # βj for 1 ≤ j ≤ n
             for n in range(numUsers):
-                tmp_hs = number.bytes_to_long(PWGi[n].digest()) % ec.p  # módulo ????????????????????????????????????????
-                tmp_result = kn[n] * (Qi - tmp_hs * Q)
-                tmp_hash = h0(str(tmp_result).encode('utf-8'), str(n + 1).encode('utf-8'))
+                tmp_op = kn[n] * (Qi - (number.bytes_to_long(PWGi[n].digest()) % ec.p) * Q)
+                tmp_hash = h0(str(tmp_op).encode('utf-8'), str(n + 1).encode('utf-8'))
 
                 '''
                 In order to do the xor operation, we turn the Point alfai[n] into bytes
@@ -302,8 +311,7 @@ for numUsers in numUsersValues:
                 # The second parameter causes the front of the byte string to be padded with
                 # binary zeros so that the length is a multiple of 'len(bytes_alfai)'
 
-                tmp_xor = xor(tmp_hash_completed, bytes_alfai)
-                betai.append(tmp_xor)
+                betai.append(xor(tmp_hash_completed, bytes_alfai))
 
             ''' Let A(Q(i)) = (β1,...,βn,k1 * P,...,kn * P), and let KS = y * X. '''
 
@@ -344,14 +352,12 @@ for numUsers in numUsersValues:
             # βi will be in [index] position of A(Q(i)) and ki * P will be in [numUsers+index] position
             beta = AQi[index]
 
-            tmp_Pki = AQi[numUsers + index]
-            # Pki is a bytearray-shaped Point. First, we have to turn this bytearray into a string
-            str_Pki = bytes(tmp_Pki).decode()
+            # Pki is a bytearray-shaped Point.
+            # First, we have to turn this bytearray into a string
             # And then, we turn the string into a Point using the 'str_to_point' function previously implemented
-            Pki = str_to_point(str_Pki)
+            Pki = str_to_point(bytes(AQi[numUsers + index]).decode())
 
-            tmp_mul = r * Pki  # r generated before
-            tmp_hs = h0(str(tmp_mul).encode('utf-8'), str(index + 1).encode('utf-8'))
+            tmp_hs = h0(str(r * Pki).encode('utf-8'), str(index + 1).encode('utf-8'))  # r generated before
 
             '''
             As before, we turn the result of the hash operation into bytes.
@@ -361,16 +367,12 @@ for numUsers in numUsersValues:
             # The second parameter causes the front of the byte string to be padded
             # with binary zeros so that the length is a multiple of 'len(beta)'
 
-            str_alfa = bytes(xor(beta, tmp_hash_completed)).decode()
-
             # As alfa is a Point, we turn the string into a Point using the 'str_to_point' function
-            alfa = str_to_point(str_alfa)
+            alfa = str_to_point(bytes(xor(beta, tmp_hash_completed)).decode())
 
             ''' Ci computes Y = αi - PWFi * P, KC = x * Y. '''
 
-            tmp_fi = PWFi[index]
-            tmp_hs = number.bytes_to_long(tmp_fi.digest()) % ec.p  # módulo ?????????????????????????????????????????????
-            Y_c = alfa - tmp_hs * P
+            Y_c = alfa - (number.bytes_to_long(PWFi[index].digest()) % ec.p) * P
 
             KC = priv_key * Y  # KC = x * Y
 
@@ -381,13 +383,14 @@ for numUsers in numUsersValues:
 
             ''' If AuthS is valid, Ci accepts and computes the session-key skC as
             skC = H1(Γ,S,X,A(Q(i)),Y,KC). '''
-            '''If AuthS is invalid then Ci aborts the protocol. '''
+
+            ''' If AuthS is invalid then Ci aborts the protocol. '''
 
             if AuthC.hexdigest() == AuthS.hexdigest():  # Accept
                 skC = h1(str(pwdList).encode('utf-8'), id_server.encode('utf-8'), str(X).encode('utf-8'),
                          str(AQi).encode('utf-8'), str(Y_c).encode('utf-8'), str(KC).encode('utf-8'))
 
-                print(t + 1, "... Successful")
+                print(t + 1, "... Successful")  # Log
 
             else:
                 print("Incorrect Authentication. Aborting protocol...")
@@ -402,9 +405,9 @@ for numUsers in numUsersValues:
 
         """ Calculating the average of the times """
 
-        average = sum(timesList) / len(timesList)
+        average = round((sum(timesList) / len(timesList)), 4)  # 4 decimals
 
-        print("\nElapsed time (average): ", average, "s\n")
+        print("\nElapsed time (average): ", average, "s\n")  # Log
 
         """ Saving time results in a file """
 
