@@ -1,4 +1,4 @@
-"""apake05.py: Executes Viet et al.'s key establishment protocol."""
+"""apake05_ec.py: Executes a key establishment protocol using elliptic curves."""
 
 __author__ = "Javier Redondo"
 __copyright__ = "Copyright 2019, Universidad Rey Juan Carlos"
@@ -14,11 +14,11 @@ __status__ = "Production"
 import sys
 import time
 
-from Crypto import Random
-from Crypto.Hash import SHA512
-from Crypto.PublicKey import ElGamal
+from Crypto.Hash import SHA256
 from Crypto.Random import random
 from Crypto.Util import number
+from fastecdsa import keys, curve
+from fastecdsa.point import Point
 
 
 # HASH FUNCTIONS:
@@ -26,12 +26,11 @@ from Crypto.Util import number
 # public cab = b"1"
 def f(data=None):
     """
-    Create a new 512 hash object with cab = b"1"
-
+    Create a new 256 hash object with cab = b"1"
     data: default = None; the very first chunk of the message to hash.
     """
 
-    hsh = SHA512.new()
+    hsh = SHA256.new()
     hsh.update(b"1")
     hsh.update(data)
     return hsh
@@ -40,12 +39,11 @@ def f(data=None):
 # public cab = b"2"
 def g(data_1=None, data_2=None):
     """
-    Create a new 512 hash object with cab = b"2"
-
+    Create a new 256 hash object with cab = b"2"
     data: default = None; the very first chunk of the message to hash.
     """
 
-    hsh = SHA512.new()
+    hsh = SHA256.new()
     hsh.update(b"2")
     hsh.update(data_1)
     hsh.update(data_2)
@@ -55,12 +53,11 @@ def g(data_1=None, data_2=None):
 # public cab = b"3"
 def h0(data_1=None, data_2=None):
     """
-    Create a new 512 hash object with cab = b"3"
-
+    Create a new 256 hash object with cab = b"3"
     data: default = None; the very first chunk of the message to hash.
     """
 
-    hsh = SHA512.new()
+    hsh = SHA256.new()
     hsh.update(b"3")
     hsh.update(data_1)
     hsh.update(data_2)
@@ -70,12 +67,11 @@ def h0(data_1=None, data_2=None):
 # public cab = b"4"
 def h1(data1=None, data2=None, data3=None, data4=None, data5=None, data6=None):
     """
-    Create a new 512 hash object with cab = b"4"
-
+    Create a new 256 hash object with cab = b"4"
     data: default = None; the very first chunk of the message to hash.
     """
 
-    hsh = SHA512.new()
+    hsh = SHA256.new()
     hsh.update(b"4")
     hsh.update(data1)
     hsh.update(data2)
@@ -89,12 +85,11 @@ def h1(data1=None, data2=None, data3=None, data4=None, data5=None, data6=None):
 # public cab = b"5"
 def h2(data1=None, data2=None, data3=None, data4=None, data5=None, data6=None):
     """
-    Create a new 512 hash object with cab = b"5"
-
+    Create a new 256 hash object with cab = b"5"
     data: default = None; the very first chunk of the message to hash.
     """
 
-    hsh = SHA512.new()
+    hsh = SHA256.new()
     hsh.update(b"5")
     hsh.update(data1)
     hsh.update(data2)
@@ -110,7 +105,6 @@ def xor(data1=None, data2=None):
     Does a "bitwise exclusive or".
     Each bit of the output is the same as the corresponding bit in data1 if that bit in data2 is 0,
     and it's the complement of the bit in data1 if that bit in data2 is 1.
-
     data1: default = None; the first bit string of the operation
     data2: default = None; the second bit string of the operation
     """
@@ -121,7 +115,6 @@ def xor(data1=None, data2=None):
 def password_generator(num_users=1000, password_length=20):
     """
     Returns a list of [num_users] random passwords with size password_length.
-
     num_users: default = 1000; number of passwords that will be generated (override to generate less/more passwords)
     password_length: default = 20; override to provide smaller/larger passwords
     """
@@ -133,35 +126,76 @@ def password_generator(num_users=1000, password_length=20):
     return password_list
 
 
+def str_to_point(string="", curv=curve.P256):
+    """
+    Returns a Point of the curve 'curv' from the point-formatted string 'string'.
+    string: default = ""; the string that is going to be turned into a Point (it must be point-formatted,
+                        i.e. it has had to be created from a point using 'str', 'unicode' or 'repr' functions)
+    curv: default = curve.P256; the default curve where the point is going to be
+    """
+
+    parts = string.split("\n")
+    x = int(parts[0].split(" ")[1], 16)  # The x coordinate of the base point of the curve (int)
+    y = int(parts[1].split(" ")[1], 16)  # The y coordinate of the base point of the curve (int)
+    # Creation of the point
+    return Point(x, y, curv)
+
+
 """ setUp() """
 
 id_server = "server1"  # Server's identification string
 
-#: Dictionary of ElGamal parameters.
+#: Dictionary of Curve parameters.
 #:
-#: A public key will only have the following entries:
+#: Curves will have the following entries:
 #:
-#:  - **y**, the public key.
-#:  - **g**, the generator.
-#:  - **p**, the modulus.
-#:
-#: A private key will also have:
-#:
-#:  - **x**, the private key.
+#:  - name (str) :  The name of the curve.
+#:  - p (long)   :  The value of p in the curve equation.
+#:  - a (long)   :  The value of a in the curve equation.
+#:  - b (long)   :  The value of b in the curve equation.
+#:  - q (long)   :  The order of the base point of the curve.
+#:  - gx (long)  :  The x coordinate of the base point of the curve.
+#:  - gy (long)  :  The y coordinate of the base point of the curve.
+#:  - oid (str)  :  The object identifier of the curve (optional).
 
-key = ElGamal.generate(512, Random.new().read)
+# We have chosen the curve P256/secp256r1, proposed by NIST/NSA
+ec = curve.P256  # E(G)
 
-# We need to select another generator, h
-q = (key.p - 1) // 2  # View ElGamal's implementation to find the value of q
-h = pow(key.g, number.getRandomRange(1, q, Random.new().read), key.p)
+#: For this curve, the domain parameters are:
+#:
+#:  p: 115792089210356248762697446949407573530086143415290314195533631308867097853951
+#:  a: -3
+#:  b: 41058363725152142129326129780047268409114441015993725554835256314039467401291
+#:  q: 115792089210356248762697446949407573529996955224135760342422259061068512044369
+#:  gx: 48439561293906451759052585252797914202762949526041747995844080717082404635286
+#:  gy: 36134250956749795798585127919587881956611106672985015071877198253568414405109
+#:  oid: b'*\x86H\xce=\x03\x01\x07'
+#:
+#:
+#: Visit http://www.secg.org/sec2-v2.pdf to check this information is correct.
+
+# Therefore the base point is:
+P = Point(ec.gx, ec.gy, ec)
+
+
+# We generate a keypair (i.e. both keys) for this curve
+priv_key, pub_key = keys.gen_keypair(ec)
+
+# We need to select another point of the curve, Q
+d = keys.gen_private_key(ec)  # generate another private key (scalar) for curve P256
+Q = d * P
+'''
+P * d works fine too, i.e. order doesn't matter. Also keys.get_public_key(d, ec) works fine,
+i.e. getting the public key corresponding to the private key we just generated
+'''
 
 
 ''' PUBLIC INFORMATION: '''
 
-#: Group G
-#: key.g                # generator g of G
-#: h                    # generator h of G
-#: key.p                # group order p
+#: ec                   # Elliptic curve E(G); the group
+#: P                    # point P of E(G)
+#: Q                    # another point Q of E(G)
+#: ec.p                 # group order p
 #: f, g, h0, h1, h2     # hash functions
 
 
@@ -171,9 +205,9 @@ numUsersValues = [1000, 5000, 10000, 15000, 20000]
 pwdBitLenValues = [32, 64, 128, 256]
 
 
-""" File with elapsed times (results) """
+""" File with elapsed times (results_ec) """
 
-file = open("results.txt", 'w')
+file = open("results_ec.txt", 'w')
 file.write("number of users\tpassword bit length\telapsed time (s)\n")  # header
 file.close()
 
@@ -218,20 +252,24 @@ for numUsers in numUsersValues:
 
             """ Phase 1 """
 
-            ''' Ci chooses randomly and uniformly x,r ∈ Zp and computes X = g^x. '''
+            ''' Ci chooses randomly and uniformly x,r ∈ Zp and computes X = x * P. '''
 
-            X = key.y  # The public key of ElGamal key is y = g^x, so X = y
-            r = number.getRandomRange(2, key.p - 1, Random.new().read)  # We generate r ∈ Zp
+            '''
+            The private key is chosen randomly and uniformly in Zp, so it can be x;
+            and public key is priv_key * P, so X = pub_key
+            '''
+            X = pub_key
+            r = keys.gen_private_key(ec)  # We can generate r ∈ Zp as a private key
 
             ''' Next, Ci generates a query Q(i) for the i-th data in OT protocol as
-            Q(i) = g^r h^G(i,pwi) = g^r h^PWGi. '''
+            Q(i) = r * P + G(i,pwi) * Q = r * P + PWGi * Q. '''
 
-            Qi = (pow(key.g, r, key.p)) * (pow(h, (number.bytes_to_long(PWGi[index].digest()) % key.p), key.p)) % key.p
+            Qi = r * P + (number.bytes_to_long(PWGi[index].digest()) % ec.p) * Q
 
             ''' Ci sends (Γ, X, Q(i)) to S. '''
             '''
             We have all of the pieces:
-        
+
                 Γ -> pwdList
                 X -> X
                 Q(i) -> Qi
@@ -239,43 +277,55 @@ for numUsers in numUsersValues:
 
             """ Phase 2 """
 
-            ''' S chooses randomly and uniformly y, k1,...,kn ∈ Zp and computes Y = g^y
+            ''' S chooses randomly and uniformly y, k1,...,kn ∈ Zp and computes Y = y * P
             and αj, βj for 1 ≤ j ≤ n as follows:􏱅􏱆 􏱇 􏱈
-                                                αj =Y*g^F(pwj) = Y*g^PWFj, βj = H0((Q(i)(h^PWGj)^−1)^kj, j) ⊕ αj. '''
+                                        αj = Y + F(pwj) * P = Y + PWFj * P, βj = H0(kj * (Q(i) - PWGj * Q), j) ⊕ αj. '''
 
-            y_min = number.getRandomRange(2, key.p - 1, Random.new().read)  # We generate y ∈ Zp
-            Y = pow(key.g, y_min, key.p)
+            y_min = keys.gen_private_key(ec)  # We can generate y ∈ Zp as a private key
+            Y = y_min * P
 
-            kn = []  # k1,...,kn ∈ Zp
+            kn = []  # k1,...,kn ∈ Zp as private keys
             for i in range(numUsers):
-                kn.append(number.getRandomRange(2, key.p - 1, Random.new().read))
+                kn.append(keys.gen_private_key(ec))
 
             alfai = []  # αj for 1 ≤ j ≤ n
             for pwf in PWFi:
-                alfai.append(Y * (pow(key.g, (number.bytes_to_long(pwf.digest()) % key.p), key.p)) % key.p)
+                alfai.append(Y + (number.bytes_to_long(pwf.digest()) % ec.p) * P)
 
             betai = []  # βj for 1 ≤ j ≤ n
             for n in range(numUsers):
-                # We divide the instruction into several lines to make it more readable
-                tmp_exp1 = pow(h, (number.bytes_to_long(PWGi[n].digest()) % key.p), key.p)
-                tmp_mul = Qi * (number.inverse(tmp_exp1, key.p)) % key.p
-                tmp_exp2 = pow(tmp_mul, kn[n], key.p)
-                tmp_hash = h0(str(tmp_exp2).encode('utf-8'), str(n + 1).encode('utf-8'))
+                tmp_op = kn[n] * (Qi - (number.bytes_to_long(PWGi[n].digest()) % ec.p) * Q)
+                tmp_hash = h0(str(tmp_op).encode('utf-8'), str(n + 1).encode('utf-8'))
 
-                if len(tmp_hash.digest()) != len(number.long_to_bytes(alfai[n], len(tmp_hash.digest()))):
-                    raise ValueError('XOR operands have different sizes')
-                else:
-                    betai.append(xor(tmp_hash.digest(), number.long_to_bytes(alfai[n], len(tmp_hash.digest()))))
+                '''
+                In order to do the xor operation, we turn the Point alfai[n] into bytes
+                (First: Point -> string; Second: string -> bytes)
+                '''
+                bytes_alfai = str(alfai[n]).encode('utf-8')  # Bytes
 
-            ''' Let A(Q(i)) = (β1,...,βn,g^k1,...,g^kn), and let KS = X^y. '''
+                '''
+                Then, we turn the result of the hash operation into bytes.
+                We use the 'long_to_bytes' function in order to achieve the same byte-length in both operands of the xor
+                '''
+                tmp_hash_completed = number.long_to_bytes(number.bytes_to_long(tmp_hash.digest()), len(bytes_alfai))
+                # The second parameter causes the front of the byte string to be padded with
+                # binary zeros so that the length is a multiple of 'len(bytes_alfai)'
 
-            gkn = []  # We already have β1,...,βn; but we have to calculate g^k1,...,g^kn
-            for exp in kn:
-                gkn.append(pow(key.g, exp, key.p))
+                betai.append(xor(tmp_hash_completed, bytes_alfai))
 
-            AQi = betai + gkn  # AQi will be the concatenation of betai and gkn lists
+            ''' Let A(Q(i)) = (β1,...,βn,k1 * P,...,kn * P), and let KS = y * X. '''
 
-            KS = pow(X, y_min, key.p)
+            Pkn = []  # We already have β1,...,βn; but we have to calculate k1 * P,...,kn * P
+            for scl in kn:
+                Pk = scl * P
+                '''
+                We insert the Pk points bytearray-shaped to make the next concatenation
+                '''
+                Pkn.append(bytearray(str(Pk).encode('utf-8')))
+
+            AQi = betai + Pkn  # AQi will be the concatenation of betai and Pkn lists
+
+            KS = y_min * X
 
             ''' S computes the authenticator AuthS and the session key skS as follows
             AuthS = H2(Γ,S,X,A(Q(i)),Y,KS) and skS = H1(Γ,S,X,A(Q(i)),Y,KS). '''
@@ -289,7 +339,7 @@ for numUsers in numUsersValues:
             ''' S sends (S,A(Q(i)),AuthS) to Ci. '''
             '''
             We have all of the pieces:
-        
+
                 S -> id_server
                 A(Q(i)) -> AQi
                 AuthS -> AuthS
@@ -297,24 +347,34 @@ for numUsers in numUsersValues:
 
             """ Phase 3 """
 
-            ''' Ci extracts αi from A(Q(i)) as αi = βi ⊕ H0((g^ki)^r, i). '''
+            ''' Ci extracts αi from A(Q(i)) as αi = βi ⊕ H0(r * (ki * P), i). '''
 
-            beta = AQi[index]  # βi will be in [index] position of A(Q(i)) and g^ki will be in [numUsers+index] position
-            gki = int(AQi[numUsers + index])  # It is an integer
+            # βi will be in [index] position of A(Q(i)) and ki * P will be in [numUsers+index] position
+            beta = AQi[index]
 
-            tmp_hs = h0(str(pow(gki, r, key.p)).encode('utf-8'), str(index + 1).encode('utf-8'))  # r generated before
+            # Pki is a bytearray-shaped Point.
+            # First, we have to turn this bytearray into a string
+            # And then, we turn the string into a Point using the 'str_to_point' function previously implemented
+            Pki = str_to_point(bytes(AQi[numUsers + index]).decode())
 
-            if len(beta) != len(tmp_hs.digest()):
-                raise ValueError('XOR operands have different sizes')
-            else:
-                alfa = number.bytes_to_long(xor(beta, tmp_hs.digest())) % key.p  # αi is an integer
+            tmp_hs = h0(str(r * Pki).encode('utf-8'), str(index + 1).encode('utf-8'))  # r generated before
 
-            ''' Ci computes Y = αi(g^PWFi)^−1, KC = Y^x. '''
+            '''
+            As before, we turn the result of the hash operation into bytes.
+            We use the 'long_to_bytes' function in order to achieve the same byte-length in both operands of the xor
+            '''
+            tmp_hash_completed = number.long_to_bytes(number.bytes_to_long(tmp_hs.digest()), len(beta))
+            # The second parameter causes the front of the byte string to be padded
+            # with binary zeros so that the length is a multiple of 'len(beta)'
 
-            tmp_exp = pow(key.g, (number.bytes_to_long(PWFi[index].digest()) % key.p), key.p)
-            Y_c = alfa * (number.inverse(tmp_exp, key.p)) % key.p
+            # As alfa is a Point, we turn the string into a Point using the 'str_to_point' function
+            alfa = str_to_point(bytes(xor(beta, tmp_hash_completed)).decode())
 
-            KC = pow(Y_c, key.x, key.p)  # KC = Y^x
+            ''' Ci computes Y = αi - PWFi * P, KC = x * Y. '''
+
+            Y_c = alfa - (number.bytes_to_long(PWFi[index].digest()) % ec.p) * P
+
+            KC = priv_key * Y  # KC = x * Y
 
             ''' Ci computes AuthC = H2(Γ,S,X,A(Q(i)),Y,KC) and checks whether AuthS =? AuthC '''
 
@@ -351,10 +411,10 @@ for numUsers in numUsersValues:
 
         """ Saving time results in a file """
 
-        file = open("results.txt", 'a')
+        file = open("results_ec.txt", 'a')
         file.write(str(numUsers) + "\t" + str(pwdBitLen) + "\t" + str(average).replace(".", ",") + "\n")
         file.close()
 
-    file = open("results.txt", 'a')
+    file = open("results_ec.txt", 'a')
     file.write("\n")
     file.close()
